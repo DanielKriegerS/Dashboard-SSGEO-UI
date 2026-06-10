@@ -1,0 +1,24 @@
+  <div class="container mt-4">
+    <h1 class="text-center mb-2">Quarters</h1>
+
+    <div class="d-flex align-items-center">
+
+      <button class="btn btn-outline-primary me-2" (click)="prev()">◀</button>
+
+      <div class="row flex-grow-1">
+        <div class="col-md-4" *ngFor="let q of visible">
+          <a [routerLink]="['/quarters', q.id]" class="text-decoration-none">
+            <app-card
+              [title]="q.description"
+              [subtitle]="q.sprints + ' sprints'"
+              [startDate]="q.startDate | date:'shortDate'"
+              [endDate]="q.endDate | date:'shortDate'">
+            </app-card>
+          </a>
+</div>
+      </div>
+
+      <button class="btn btn-outline-primary ms-2" (click)="next()">▶</button>
+
+    </div>
+  </div>

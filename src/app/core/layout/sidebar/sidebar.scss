@@ -1,0 +1,13 @@
+nav {
+  width: 220px;
+  min-height: 100vh;
+  transition: all 0.3s ease;
+}
+
+.sidebar-collapsed {
+  width: 70px;
+}
+
+.sidebar-open {
+  width: 220px;
+}

@@ -1,0 +1,26 @@
+<div class="container mt-4" *ngIf="sprint">
+
+  <h1 class="text-center">{{ sprint.description }}</h1>
+
+  <div class="d-flex align-items-center mt-4">
+
+    <button class="btn btn-outline-primary me-2" (click)="prev()">◀</button>
+
+    <div class="row flex-grow-1">
+      <div class="col-md-4" *ngFor="let c of visibleCoatends">
+
+        <a [routerLink]="['/coatends', c.id]" class="text-decoration-none">
+          <app-card
+            [title]="c.description"
+            [subtitle]="'#' + c.coatendNumber">
+          </app-card>
+        </a>
+
+      </div>
+    </div>
+
+    <button class="btn btn-outline-primary ms-2" (click)="next()">▶</button>
+
+  </div>
+
+</div>

@@ -1,0 +1,15 @@
+<nav class="bg-dark text-white p-3"
+     [class.sidebar-open]="!collapsed"
+     [class.sidebar-collapsed]="collapsed">
+
+  <button class="btn btn-sm btn-light mb-3" (click)="toggle()">☰</button>
+
+  <ul class="nav flex-column">
+    <li><a routerLink="/" class="nav-link text-white">Home</a></li>
+    <li><a routerLink="/quarters" class="nav-link text-white">Quarters</a></li>
+    <li><a routerLink="/sprints" class="nav-link text-white">Sprints</a></li>
+    <li><a routerLink="/coatends" class="nav-link text-white">Coatends</a></li>
+
+  </ul>
+
+</nav>
