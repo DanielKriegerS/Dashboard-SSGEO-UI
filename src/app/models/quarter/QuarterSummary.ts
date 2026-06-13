@@ -1,7 +1,7 @@
 export interface QuarterSummary {
   id: string;
   description: string;
-  sprints?: number;
+  sprintCount: number;
   startDate?: string;
   endDate?: string;
 }

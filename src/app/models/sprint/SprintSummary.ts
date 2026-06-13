@@ -1,7 +1,7 @@
 export interface SprintSummary {
     id: string,
     description: string,
-    coatends?: number,
+    coatendsCount: number,
     startDate?: string,
-    endDate: string
+    endDate?: string
 }
