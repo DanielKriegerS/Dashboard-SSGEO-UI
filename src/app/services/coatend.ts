@@ -1,6 +1,9 @@
 import { Injectable } from '@angular/core';
 import { API_URL } from '../config/api.config';
 import { HttpClient } from '@angular/common/http';
+import { CoatendSummary } from '../models/coatend/CoatendSummary';
+import { Observable } from 'rxjs';
+import { CoatendCreateModel } from '../models/coatend/CoatendCreateModel';
 
 @Injectable({ providedIn: 'root' })
 export class CoatendService {
@@ -9,8 +12,12 @@ export class CoatendService {
 
   constructor(private http: HttpClient) {}
 
-  create(sprintId: string, payload: any) {
-    return this.http.post(`${API_URL}/sprints/${sprintId}/coatends`, payload);
+  create(coatend: CoatendCreateModel) : Observable<CoatendCreateModel> {
+    return this.http.post<CoatendCreateModel>(`${API_URL}/coatends`, coatend);
+  }
+
+  getAll() : Observable<CoatendSummary[]> {
+    return this.http.get<CoatendSummary[]>(this.baseUrl);
   }
 
   getById(id: string) {
