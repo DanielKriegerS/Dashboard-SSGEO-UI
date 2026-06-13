@@ -7,6 +7,7 @@ import { Component, Input } from '@angular/core';
   templateUrl: './card.html'
 })
 export class CardComponent {
+  
   @Input() title = '';
   @Input() subtitle = '';
   @Input() startDate: String | null = null;
