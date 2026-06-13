@@ -4,7 +4,7 @@ import { CommonModule } from '@angular/common';
 import { CardComponent } from '../../shared/components/card/card';
 import { Quarter } from '../../services/quarter';
 import { SprintSummary } from '../../models/sprint/SprintSummary';
-import { QuarterSummary } from '../../models/quarter/QuarterSummary';
+import { QuarterModel } from '../../models/quarter/QuarterModel';
 
 @Component({
   standalone: true,
@@ -13,8 +13,7 @@ import { QuarterSummary } from '../../models/quarter/QuarterSummary';
 })
 export class QuarterComponent implements OnInit {
 
-  quarter?: QuarterSummary;
-  sprints?: SprintSummary[];
+  quarter?: QuarterModel;
   startIndex = 0;
 
   constructor(
@@ -30,7 +29,7 @@ export class QuarterComponent implements OnInit {
   }
 
   next() {
-    if (this.startIndex + 3 < (this.quarter?.sprints || 0)) {
+    if (this.startIndex + 3 < (this.quarter?.sprints?.length || 0)) {
       this.startIndex += 3;
     }
   }
@@ -41,9 +40,7 @@ export class QuarterComponent implements OnInit {
     }
   }
 
-  get visibleSprints() {
-    const totalSprints = this.quarter?.sprints ?? 0;
-    const endIndex = Math.min(totalSprints, this.startIndex + 3);
-    return Array.from({ length: Math.max(0, endIndex - this.startIndex) }, (_, i) => this.startIndex + i + 1);
+  get visibleSprints(): SprintSummary[] {
+    return this.quarter?.sprints?.slice(this.startIndex, this.startIndex + 3) || [];
   }
 }

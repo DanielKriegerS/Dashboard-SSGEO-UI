@@ -1,0 +1,30 @@
+  <h1 class="text-center">Coatend's</h1>
+
+  <div class="d-flex align-items-center mt-4">
+
+    <button class="btn btn-outline-primary me-2" (click)="prev()">◀</button>
+
+    <div class="row flex-grow-1">
+      <div class="col-md-4" *ngFor="let c of visible">
+        <a [routerLink]="['/coatends', c.id]" class="text-decoration-none">
+          <app-card
+            [title]="c.description"
+            [subtitle]="'#' + c.coatendNumber">
+          </app-card>
+        </a>
+      </div>
+
+      <app-notfoundfallback *ngIf="visible.length === 0"
+        [title]="'Coatend'">
+      </app-notfoundfallback>
+    </div>
+
+    <button class="btn btn-outline-primary ms-2" (click)="next()">▶</button>
+
+  </div>
+
+<app-dynamicformcomponent
+  title="Novo Coatend"
+  [fields]="fields"
+  [submitFn]="createCoatend">
+</app-dynamicformcomponent>

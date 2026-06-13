@@ -1,26 +1,50 @@
-<div class="container mt-4" *ngIf="sprint">
+  <div class="container mt-4">
+    <h1 class="text-center mb-2">Sprints</h1>
 
-  <h1 class="text-center">{{ sprint.description }}</h1>
+    <div class="d-flex align-items-center">
 
-  <div class="d-flex align-items-center mt-4">
+      <button class="btn btn-outline-primary me-2" (click)="prev()">◀</button>
 
-    <button class="btn btn-outline-primary me-2" (click)="prev()">◀</button>
+      <div class="flex-grow-1">
 
-    <div class="row flex-grow-1">
-      <div class="col-md-4" *ngFor="let c of visibleCoatends">
+          <ng-container *ngIf="!loading; else loadingState">
+            <ng-container *ngIf="sprints.length > 0; else emptyState">
+        
+              <div class="row">
+                <div class="col-md-4" *ngFor="let s of visible">
+                  <a [routerLink]="['/sprints', s.id]" class="text-decoration-none">
+                    <app-card
+                      [title]="s.description"
+                      [subtitle]="s.coatendsCount + ' coatends'"
+                      [startDate]="s.startDate | date:'shortDate'"
+                      [endDate]="s.endDate | date:'shortDate'">
+                    </app-card>
+                  </a>
+                </div>
+              </div>
+            </ng-container>
+          </ng-container>
 
-        <a [routerLink]="['/coatends', c.id]" class="text-decoration-none">
-          <app-card
-            [title]="c.description"
-            [subtitle]="'#' + c.coatendNumber">
-          </app-card>
-        </a>
+          <ng-template #emptyState>
+            <div class="text-center text-muted">
+              <app-notfoundfallback [title]="'Sprint'"></app-notfoundfallback>
+            </div>
+          </ng-template>
+
+          <ng-template #loadingState>
+            <div class="text-center">
+              <span class="spinner-border"></span>
+            </div>
+          </ng-template>
 
       </div>
+      <button class="btn btn-outline-primary ms-2" (click)="next()">▶</button>
+
     </div>
-
-    <button class="btn btn-outline-primary ms-2" (click)="next()">▶</button>
-
   </div>
 
-</div>
+  <app-dynamicformcomponent
+  title="Nova Sprint"
+  [fields]="fields"
+  [submitFn]="createSprint">
+</app-dynamicformcomponent> 
