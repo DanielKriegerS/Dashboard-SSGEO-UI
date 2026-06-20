@@ -17,11 +17,17 @@ export class Dynamicformcomponent {
   @Output() onSuccess = new EventEmitter<void>();
 
   formData: any = {};
+  collapsed = true;
 
   submit() {
     this.submitFn(this.formData);
     this.onSuccess.emit();
     this.formData = {};
   }
+  
+  toggle() {
+    this.collapsed = !this.collapsed;
+  }
+
 }
 

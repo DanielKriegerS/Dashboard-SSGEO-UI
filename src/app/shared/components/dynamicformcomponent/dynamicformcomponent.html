@@ -1,13 +1,19 @@
 <div class="row justify-content-end">
   <div class="card mt-4 shadow-sm col-lg-3">
-    
-    <div class="row card-title-box">
-      <h5 class="card-title text-center">{{ title }}</h5>       
+    <div 
+      class="card-title-box d-flex justify-content-between align-items-center p-2"
+      style="cursor: pointer;"
+      (click)="toggle()">
+
+      <h5 class="mb-0 card-title">{{ title }}</h5>
+
+      <span>
+        {{ collapsed ? '▼' : '▲' }}
+      </span>
     </div>
 
-    <div class="card-body">
+    <div class="card-body" *ngIf="!collapsed">
       <form (ngSubmit)="submit()">
-
         <div *ngFor="let field of fields" class="mb-3">
           <label class="form-label">{{ field.label }}</label>
 
@@ -22,7 +28,6 @@
         <button class="btn btn-primary w-100">Salvar</button>
 
       </form>
-
     </div>
   </div>
 </div>

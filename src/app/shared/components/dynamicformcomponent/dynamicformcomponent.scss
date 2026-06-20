@@ -1,9 +1,9 @@
-.card-title-box {
-    background-color: rgba(77, 104, 242, 0.9);
-}
-
 .card-title {
     font-size: 1.5rem;
     font-weight: bolder;
-    color: white;
+    color: rgba(51, 10, 215, .8);
+}
+
+.card-title-box {
+    border-bottom: 1px solid rgba(58, 6, 146, 0.9);
 }
