@@ -4,6 +4,8 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { SprintSummary } from '../models/sprint/SprintSummary';
 import { SprintCreateModel } from '../models/sprint/SprintCreateModel';
+import { SprintCompleteModel } from '../models/sprint/SprintCompleteModel';
+import { SprintMoveModel } from '../models/sprint/SprintMoveModel';
 
 @Injectable({ providedIn: 'root' })
 export class SprintService {
@@ -16,11 +18,15 @@ export class SprintService {
     return this.http.get<SprintSummary[]>(this.baseUrl);
   }
   
-  getById(id: string) {
-    return this.http.get(`${this.baseUrl}/${id}`);
+  getById(id: string) : Observable<SprintCompleteModel> {
+    return this.http.get<SprintCompleteModel>(`${this.baseUrl}/${id}`);
   }
 
   create(sprint: SprintCreateModel) {
     return this.http.post(`${API_URL}/sprints`, sprint);
+  }
+
+  updateSprintQuarter(sprintId: string, payload: SprintMoveModel) {
+    return this.http.patch(`${this.baseUrl}/${sprintId}/move`, payload);
   }
 }

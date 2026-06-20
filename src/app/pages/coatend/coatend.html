@@ -1,11 +1,17 @@
-<div class="container mt-4" *ngIf="coatend">
+<div *ngIf="coatend">
 
   <h2>{{ coatend.description }}</h2>
   <p><strong>Número:</strong> {{ coatend.coatendNumber }}</p>
 
   <hr>
 
-  <h5>Comentários</h5>
+  <h5>Comentários</h5> 
   <textarea class="form-control" rows="4"></textarea>
 
 </div>
+
+<app-move-to
+  title="Mover Coatend para outra Sprint"
+  [options]="sprintsOptions"
+  [moveFn]="moveCoatend">
+</app-move-to>

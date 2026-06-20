@@ -1,3 +1,46 @@
-<div class="container mt-4">
-    <h2>Sprint Detail</h2>
+<div *ngIf="sprint"> 
+  <h1 class="text-center">{{description}}</h1>
+
+  <div class="d-flex align-items-center">
+    <div class="flex-grow-1">
+      <app-carousel-navigator
+        (prev)="prev()"
+        (next)="next()"
+        [disablePrev]="startIndex === 0"
+        [disableNext]="startIndex + 3 >= (coatends.length || 0)"
+      >
+        <ng-container *ngIf="coatends.length > 0; else emptyState">
+          <div class="row">
+            <div class="col-md-4" *ngFor="let c of visibleCoatends">
+              <a [routerLink]="['/coatends', c.id]" class="text-decoration-none">
+                <app-card
+                  [title]="c.description"
+                  [subtitle]="'#' + c.coatendNumber">
+                </app-card>
+              </a>
+            </div>
+          </div>
+        </ng-container>
+      </app-carousel-navigator>
+      
+      <ng-template #emptyState>
+        <app-notfoundfallback 
+          *ngIf="visibleCoatends.length === 0"
+          [title]="'Coatend '">
+        </app-notfoundfallback>
+      </ng-template>
+
+      <app-datecomponent
+        [startDate]="sprint.startDate | date:'shortDate'",
+        [endDate]="sprint.endDate | date:'shortDate'"
+      ></app-datecomponent>
+    </div>
+  </div>
 </div>
+
+<app-move-to
+  title="Mover Sprint para outro Quarter"
+  [options]="quartersOptions"
+  [moveFn]="moveSprint">
+</app-move-to>
+ 

@@ -1,0 +1,22 @@
+<div class="position-fixed bottom-0 start-50 translate-middle-x col-lg-4 mb-3">
+  <div class="card shadow-sm">
+    <div class="card-body">
+
+      <h5 class="text-center">{{ title }}</h5>
+
+      <select class="form-select mb-3" [(ngModel)]="selectedId">
+        <option value="" disabled selected>Selecione</option>
+        <option *ngFor="let opt of options" [value]="opt.id">
+          {{ opt.label }}
+        </option>
+      </select>
+
+      <div class="d-flex justify-content-center">
+        <button class="btn btn-success w-50" (click)="submit()">
+          Mover
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>

@@ -1,0 +1,24 @@
+<div class="d-flex align-items-center w-100">
+
+  <!-- PREV -->
+  <button
+    class="btn btn-outline-primary me-2"
+    (click)="onPrev()"
+    [disabled]="disablePrev">
+    ◀
+  </button>
+
+  <!-- SLOT DE CONTEÚDO -->
+  <div class="flex-grow-1">
+    <ng-content></ng-content>
+  </div>
+
+  <!-- NEXT -->
+  <button
+    class="btn btn-outline-primary ms-2"
+    (click)="onNext()"
+    [disabled]="disableNext">
+    ▶
+  </button>
+
+</div>

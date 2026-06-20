@@ -1,32 +1,44 @@
 <div class="container mt-4" *ngIf="quarter">
-
-  <h1 class="text-center mb-2">{{ quarter.description }}</h1>
+  <h1 class="text-center mb-2">{{ description }}</h1>
 
   <div class="d-flex align-items-center">
 
-    <button class="btn btn-outline-primary me-2" (click)="prev()" [disabled]="startIndex === 0">◀</button>
+    <div class="flex-grow-1">
+      <app-carousel-navigator
+        (prev)="prev()"
+        (next)="next()"
+        [disablePrev]="startIndex === 0"
+        [disableNext]="startIndex + 3 >= (sprints.length || 0)"
+      >
+        <ng-container *ngIf="sprints.length > 0; else emptyState">
 
-    <div class="row flex-grow-1" *ngIf="visibleSprints.length > 0">
-      <div class="col-md-4 mb-3" *ngFor="let sprint of visibleSprints">
+          <div class="row">
+            <div class="col-md-4" *ngFor="let sprint of visibleSprints">
+              <a [routerLink]="['/sprints', sprint.id]" class="text-decoration-none">
+                <app-card
+                  [title]="sprint.description"
+                  [subtitle]="sprint.coatendsCount ? sprint.coatendsCount + ' coatends' : 'Sem coatends'"
+                  [startDate]="sprint.startDate | date:'shortDate'"
+                  [endDate]="sprint.endDate | date:'shortDate'">
+                </app-card>
+              </a>
+      
+            </div>
+          </div>
+        </ng-container>
+      </app-carousel-navigator>
+      
+      <ng-template #emptyState>
+        <div class="text-center text-muted">
+          <app-notfoundfallback [title]="'Sprint'"></app-notfoundfallback>
+        </div>
+      </ng-template>
 
-        <a [routerLink]="['/sprints', sprint.id]" class="text-decoration-none">
-          <app-card
-            [title]="sprint.description"
-            [subtitle]="sprint.coatends ? sprint.coatends + ' coatends' : 'Sem coatends'"
-            [startDate]="sprint.startDate | date:'shortDate'"
-            [endDate]="sprint.endDate | date:'shortDate'">
-          </app-card>
-        </a>
-
-      </div>
+      <app-datecomponent
+        [startDate]="quarter.startDate | date:'shortDate'",
+        [endDate]="quarter.endDate | date:'shortDate'"
+      ></app-datecomponent>
     </div>
-
-    <div class="flex-grow-1 text-center text-muted" *ngIf="visibleSprints.length === 0">
-      <p>Nenhum sprint encontrado para este trimestre.</p>
-    </div>
-
-    <button class="btn btn-outline-primary ms-2" (click)="next()" [disabled]="startIndex + 3 >= (quarter.sprints?.length || 0)">▶</button>
 
   </div>
-
 </div>

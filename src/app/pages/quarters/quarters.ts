@@ -8,10 +8,11 @@ import { Notfoundfallback } from "../../shared/components/notfoundfallback/notfo
 import { Dynamicformcomponent } from "../../shared/components/dynamicformcomponent/dynamicformcomponent";
 import { FormField } from '../../models/components/FormField';
 import { QuarterCreateModel } from '../../models/quarter/QuarterCreateModel';
+import { CarouselNavigator } from "../../shared/components/carousel-navigator/carousel-navigator";
 
 @Component({
   standalone: true,
-  imports: [CommonModule, CardComponent, RouterLink, Notfoundfallback, Dynamicformcomponent],
+  imports: [CommonModule, CardComponent, RouterLink, Notfoundfallback, Dynamicformcomponent, CarouselNavigator],
   templateUrl: './quarters.html'
 })
 export class QuartersComponent {
