@@ -6,6 +6,7 @@ import { SprintSummary } from '../models/sprint/SprintSummary';
 import { SprintCreateModel } from '../models/sprint/SprintCreateModel';
 import { SprintCompleteModel } from '../models/sprint/SprintCompleteModel';
 import { SprintMoveModel } from '../models/sprint/SprintMoveModel';
+import { SprintUpdatePayload } from '../models/sprint/SprintUpdatePayload';
 
 @Injectable({ providedIn: 'root' })
 export class SprintService {
@@ -28,5 +29,9 @@ export class SprintService {
 
   updateSprintQuarter(sprintId: string, payload: SprintMoveModel) {
     return this.http.patch(`${this.baseUrl}/${sprintId}/move`, payload);
+  }
+
+  update(sprintId: string, payload: SprintUpdatePayload) : Observable<SprintSummary> {
+    return this.http.put<SprintSummary>(`${this.baseUrl}/${sprintId}`, payload);
   }
 }

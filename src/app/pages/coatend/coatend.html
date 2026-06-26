@@ -15,3 +15,10 @@
   [options]="sprintsOptions"
   [moveFn]="moveCoatend">
 </app-move-to>
+
+<app-dynamic-edit-component
+  title="Editar coatend"
+  [fields]="editFields"
+  [data]="coatendToUpdate"
+  [updateFn]="updateCoatend">
+</app-dynamic-edit-component>

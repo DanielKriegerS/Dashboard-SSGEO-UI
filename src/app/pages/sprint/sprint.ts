@@ -11,22 +11,32 @@ import { MoveTo } from "../../shared/components/move-to/move-to";
 import { SprintMoveModel } from '../../models/sprint/SprintMoveModel';
 import { CarouselNavigator } from "../../shared/components/carousel-navigator/carousel-navigator";
 import { Datecomponent } from "../../shared/components/datecomponent/datecomponent";
+import { DynamicEditComponent } from '../../shared/components/dynamic-edit-component/dynamic-edit-component';
+import { FormField } from '../../models/components/FormField';
+import { SprintUpdatePayload } from '../../models/sprint/SprintUpdatePayload';
 
 @Component({
   selector: 'app-sprint',
-  imports: [CardComponent, Notfoundfallback, RouterLink, CommonModule, MoveTo, CarouselNavigator, Datecomponent],
+  imports: [CardComponent, Notfoundfallback, RouterLink, CommonModule, MoveTo, CarouselNavigator, Datecomponent, DynamicEditComponent],
   templateUrl: './sprint.html',
   styleUrl: './sprint.scss',
 })
 export class SprintComponent {
 
   sprint!: SprintCompleteModel;
-  coatends: CoatendSummary[] = []
+  coatends: CoatendSummary[] = [];
   visibleCoatends: CoatendSummary[] = [];
   startIndex = 0;
   description: string = '';
   quartersOptions: { id: string; label: string }[] = [];
   quarterId!: SprintMoveModel;
+  sprintToUpdate!: SprintUpdatePayload;
+  
+  editFields: FormField[] = [
+    { name: 'description', label: 'Descrição', type: 'text' },
+    { name: 'startDate', label: 'Data início', type: 'date' },
+    { name: 'endDate', label: 'Data fim', type: 'date' }
+  ];
 
 constructor(
   private sprintService: SprintService,
@@ -49,6 +59,12 @@ load(id: string) {
     this.coatends = res.coatends || [];
     this.description = res.description;
     this.updateVisible();
+
+    this.sprintToUpdate = {
+        description: res.description,
+        startDate: res.startDate,
+        endDate: res.endDate
+    };
 
     this.cdr.detectChanges(); 
   });
@@ -92,4 +108,18 @@ next() {
         this.load(this.sprint.id);
       });
   };
+  
+  updateSprint = (data: SprintUpdatePayload) => {
+
+  const payload = {
+    description: data.description,
+    ...(data.startDate && { startDate: data.startDate + 'T00:00:00' }),
+    ...(data.endDate && { endDate: data.endDate + 'T00:00:00' })
+
+  };
+
+    this.sprintService.update(this.sprint.id, payload)
+      .subscribe(() => this.load(this.sprint.id));      
+  };
+
 }

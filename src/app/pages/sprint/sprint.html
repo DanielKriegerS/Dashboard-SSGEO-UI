@@ -38,6 +38,13 @@
   </div>
 </div>
 
+<app-dynamic-edit-component
+  title="Editar Sprint"
+  [fields]="editFields"
+  [data]="sprintToUpdate"
+  [updateFn]="updateSprint">
+</app-dynamic-edit-component>
+
 <app-move-to
   title="Mover Sprint para outro Quarter"
   [options]="quartersOptions"

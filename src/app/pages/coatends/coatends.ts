@@ -7,7 +7,7 @@ import { CommonModule } from '@angular/common';
 import { Notfoundfallback } from "../../shared/components/notfoundfallback/notfoundfallback";
 import { FormField } from '../../models/components/FormField';
 import { Dynamicformcomponent } from "../../shared/components/dynamicformcomponent/dynamicformcomponent";
-import { CoatendCreateModel } from '../../models/coatend/CoatendCreateModel';
+import { CoatendModel } from '../../models/coatend/CoatendModel';
 
 @Component({
   imports: [CardComponent, RouterLink, CommonModule, Notfoundfallback, Dynamicformcomponent],
@@ -64,7 +64,7 @@ next() {
     }
   }
 
-  createCoatend = (data: CoatendCreateModel) => {
+  createCoatend = (data: CoatendModel) => {
       this.service.create(data).subscribe(() => this.load());
   };
 

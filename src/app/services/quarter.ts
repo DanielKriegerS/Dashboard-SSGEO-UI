@@ -6,6 +6,7 @@ import { QuarterSummary } from '../models/quarter/QuarterSummary';
 import { QuarterModel } from '../models/quarter/QuarterModel';
 import { QuarterSimple } from '../models/quarter/QuarterSimple';
 import { QuarterCreateModel } from '../models/quarter/QuarterCreateModel';
+import { QuarterUpdatePayload } from '../models/quarter/QuarterUpdatePayload';
 
 @Injectable({
   providedIn: 'root'
@@ -26,5 +27,9 @@ export class Quarter {
 
   create(data: QuarterCreateModel): Observable<QuarterSimple> {
     return this.http.post<QuarterSimple>(this.baseUrl, data);
+  }
+
+  update(quarterId: string, payload: QuarterUpdatePayload) : Observable<QuarterSummary> {
+    return this.http.put<QuarterSummary>(`${this.baseUrl}/${quarterId}`, payload);
   }
 }

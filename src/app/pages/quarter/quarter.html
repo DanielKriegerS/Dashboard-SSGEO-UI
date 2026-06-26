@@ -39,6 +39,12 @@
         [endDate]="quarter.endDate | date:'shortDate'"
       ></app-datecomponent>
     </div>
-
   </div>
 </div>
+
+<app-dynamic-edit-component
+  title="Editar quarter"
+  [fields]="editFields"
+  [data]="quarterToUpdate"
+  [updateFn]="updateQuarter">
+</app-dynamic-edit-component>

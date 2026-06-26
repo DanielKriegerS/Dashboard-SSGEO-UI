@@ -8,20 +8,30 @@ import { QuarterModel } from '../../models/quarter/QuarterModel';
 import { Notfoundfallback } from "../../shared/components/notfoundfallback/notfoundfallback";
 import { CarouselNavigator } from "../../shared/components/carousel-navigator/carousel-navigator";
 import { Datecomponent } from "../../shared/components/datecomponent/datecomponent";
+import { QuarterUpdatePayload } from '../../models/quarter/QuarterUpdatePayload';
+import { FormField } from '../../models/components/FormField';
+import { DynamicEditComponent } from "../../shared/components/dynamic-edit-component/dynamic-edit-component";
 
 @Component({
   standalone: true,
-  imports: [CommonModule, CardComponent, RouterLink, Notfoundfallback, CarouselNavigator, Datecomponent],
+  imports: [CommonModule, CardComponent, RouterLink, Notfoundfallback, CarouselNavigator, Datecomponent, DynamicEditComponent],
   styleUrls: ['./quarter.scss'],
   templateUrl: './quarter.html'
 })
 export class QuarterComponent implements OnInit {
 
-  quarter?: QuarterModel;
+  quarter!: QuarterModel;
   sprints: SprintSummary[] = [];
   visibleSprints: SprintSummary[] = [];
   startIndex = 0;
   description = '';
+  quarterToUpdate! : QuarterUpdatePayload;
+
+    editFields: FormField[] = [
+      { name: 'description', label: 'Descrição', type: 'text' },
+      { name: 'startDate', label: 'Data início', type: 'date' },
+      { name: 'endDate', label: 'Data fim', type: 'date' }
+    ];
 
   constructor(
     private route: ActivatedRoute,
@@ -44,20 +54,26 @@ export class QuarterComponent implements OnInit {
     this.description = res.description;
     this.updateVisible();
 
+    this.quarterToUpdate = {
+      description : res.description,
+      startDate : res.startDate,
+      endDate : res.endDate
+    };
+
     this.cdr.detectChanges(); 
   });
 }
 
   updateVisible() {
-  this.visibleSprints = this.sprints.slice(this.startIndex, this.startIndex + 3);
-}
-
-next() {
-  if (this.startIndex + 3 < this.sprints.length) {
-    this.startIndex += 3;
-    this.updateVisible();
+    this.visibleSprints = this.sprints.slice(this.startIndex, this.startIndex + 3);
   }
-}
+
+  next() {
+    if (this.startIndex + 3 < this.sprints.length) {
+      this.startIndex += 3;
+      this.updateVisible();
+    }
+  }
 
   prev() {
     if (this.startIndex - 3 >= 0) {
@@ -65,4 +81,17 @@ next() {
       this.updateVisible();
     }
   }  
+
+  updateQuarter = (data: QuarterUpdatePayload) => {
+  
+  const payload = {
+    description: data.description,
+    ...(data.startDate && { startDate: data.startDate + 'T00:00:00' }),
+    ...(data.endDate && { endDate: data.endDate + 'T00:00:00' })
+  
+  };
+  
+  this.service.update(this.quarter.id, payload)
+    .subscribe(() => this.load(this.quarter.id));      
+  };
 }
