@@ -1,13 +1,12 @@
-nav {
+.sidebar {
   width: 220px;
-  min-height: 100vh;
+  height: 100%; /* 🔥 AGORA FUNCIONA */
+  background-color: #212529;
+  display: flex;
+  flex-direction: column;
   transition: all 0.3s ease;
 }
 
-.sidebar-collapsed {
+.sidebar.collapsed {
   width: 70px;
-}
-
-.sidebar-open {
-  width: 220px;
 }

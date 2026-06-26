@@ -1,10 +1,14 @@
-<nav class="bg-dark text-white p-3"
-     [class.sidebar-open]="!collapsed"
-     [class.sidebar-collapsed]="collapsed">
+<nav
+  class="sidebar bg-dark text-white d-flex flex-column p-3"
+  [class.collapsed]="collapsed">
 
-  <button class="btn btn-sm btn-light mb-3" (click)="toggle()">☰</button>
+  <button class="btn btn-sm btn-light mb-3" (click)="toggle()">
+    {{ collapsed ? '➡' : '⬅' }}
+  </button>
 
-  <ul class="nav flex-column">
+  <!-- LINKS -->
+  <ul class="nav flex-column" *ngIf="!collapsed">
+
     <li><a routerLink="/" class="nav-link text-white">Home</a></li>
     <li><a routerLink="/quarters" class="nav-link text-white">Quarters</a></li>
     <li><a routerLink="/sprints" class="nav-link text-white">Sprints</a></li>
