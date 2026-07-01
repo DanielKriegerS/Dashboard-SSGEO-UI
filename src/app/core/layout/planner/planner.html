@@ -1,0 +1,78 @@
+<div class="table-responsive">
+
+  <table class="table table-bordered text-center planner-table">
+
+    <thead>
+
+      <tr>
+        <th rowspan="3" class="align-middle planner-fixed-column">
+          Planner
+        </th>
+
+        <th
+          *ngFor="let q of quarterHeaders"
+          [attr.colspan]="q.colspan"
+          class="table-dark">
+          {{ q.description || '-' }}
+        </th>
+      </tr>
+
+      <!-- HEADER SPRINTS -->
+      <tr>
+        <th
+          *ngFor="let s of sprintHeaders"
+          [attr.colspan]="s.colspan"
+          class="table-secondary">
+          {{ s.description || '-' }}
+        </th>
+      </tr>
+
+      <!-- HEADER DIAS -->
+      <tr>
+        <th *ngFor="let day of days">
+          {{ day | date:'dd/MM' }}
+        </th>
+      </tr>
+
+    </thead>
+
+    <tbody>
+
+      <ng-container *ngFor="let q of hierarchy">
+
+        <ng-container *ngFor="let s of q.sprints">
+
+          <tr *ngFor="let row of s.coatends">
+
+            <td class="text-start planner-fixed-column">
+              {{ row.coatendDescription }}
+            </td>
+
+            <td *ngFor="let cell of row.cells">
+
+              <div class="d-flex flex-column" style="gap:2px">
+
+                <span
+                  *ngFor="let entry of cell.entries"
+                  class="px-1 rounded"
+                  [ngClass]="getColor(entry.developerId)">
+
+                  {{ getShortActivity(entry.activity) }}
+
+                </span>
+
+              </div>
+
+            </td>
+
+          </tr>
+
+        </ng-container>
+
+      </ng-container>
+
+    </tbody>
+
+  </table>
+
+</div>

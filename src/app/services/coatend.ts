@@ -6,6 +6,7 @@ import { Observable } from 'rxjs';
 import { CoatendMoveModel } from '../models/coatend/CoatendMoveModel';
 import { CoatendCompleteModel } from '../models/coatend/CoatendCompleteModel';
 import { CoatendModel } from '../models/coatend/CoatendModel';
+import { CoatendPlannerModel } from '../models/components/planner/CoatendPlannerModel';
 
 @Injectable({ providedIn: 'root' })
 export class CoatendService {
@@ -31,5 +32,13 @@ export class CoatendService {
 
   updateCoatendSprint(coatendId: string, payload: CoatendMoveModel) {
     return this.http.patch(`${this.baseUrl}/${coatendId}/move`, payload);
+  }
+
+  delete(coatendId: string) : Observable<void>{
+    return this.http.delete<void>(`${this.baseUrl}/${coatendId}`);
+  }
+
+  getPlannerData(): Observable<CoatendPlannerModel[]> {
+    return this.http.get<CoatendPlannerModel[]>(`${API_URL}/planner`);
   }
 }

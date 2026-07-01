@@ -2,7 +2,31 @@
   <h1 class="fw-bold">Planner Squad Sustentação GEO</h1>
   <p class="lead">Organize e visualize o planejamento da sua squad</p>
 
-  <div class="mt-5 p-5 border rounded bg-light">
-    <h4 class="text-muted">Planner visual em breve 🚀</h4>
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <button
+      class="btn btn-outline-primary"
+      (click)="previousDays()"
+      [disabled]="dayWindowStart === 0">
+      ◀
+    </button>
+
+    <span class="dates" *ngIf="visibleDays.length > 0">
+      Exibindo {{ visibleDays[0] | date:'dd/MM' }} até
+      {{ visibleDays[visibleDays.length - 1] | date:'dd/MM' }}
+    </span>
+
+    <button
+      class="btn btn-outline-primary"
+      (click)="nextDays()"
+      [disabled]="dayWindowStart + dayWindowSize >= days.length">
+      ▶
+    </button>
   </div>
+
+  <app-planner
+    [days]="visibleDays"
+    [hierarchy]="plannerHierarchy"
+    [quarterHeaders]="quarterHeaders"
+    [sprintHeaders]="sprintHeaders">
+  </app-planner>
 </div>

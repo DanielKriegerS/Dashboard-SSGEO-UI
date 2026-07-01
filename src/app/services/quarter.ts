@@ -32,4 +32,8 @@ export class Quarter {
   update(quarterId: string, payload: QuarterUpdatePayload) : Observable<QuarterSummary> {
     return this.http.put<QuarterSummary>(`${this.baseUrl}/${quarterId}`, payload);
   }
+
+  delete(quarterId: string) : Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${quarterId}`);
+  }
 }

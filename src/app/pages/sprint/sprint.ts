@@ -4,7 +4,7 @@ import { Notfoundfallback } from "../../shared/components/notfoundfallback/notfo
 import { SprintCompleteModel } from '../../models/sprint/SprintCompleteModel';
 import { SprintService } from '../../services/sprint';
 import { CoatendSummary } from '../../models/coatend/CoatendSummary';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { Quarter } from '../../services/quarter';
 import { MoveTo } from "../../shared/components/move-to/move-to";
@@ -14,10 +14,11 @@ import { Datecomponent } from "../../shared/components/datecomponent/datecompone
 import { DynamicEditComponent } from '../../shared/components/dynamic-edit-component/dynamic-edit-component';
 import { FormField } from '../../models/components/FormField';
 import { SprintUpdatePayload } from '../../models/sprint/SprintUpdatePayload';
-
+import { DeleteButton } from "../../shared/components/delete-button/delete-button";
+ 
 @Component({
   selector: 'app-sprint',
-  imports: [CardComponent, Notfoundfallback, RouterLink, CommonModule, MoveTo, CarouselNavigator, Datecomponent, DynamicEditComponent],
+  imports: [CardComponent, Notfoundfallback, RouterLink, CommonModule, MoveTo, CarouselNavigator, Datecomponent, DynamicEditComponent, DeleteButton],
   templateUrl: './sprint.html',
   styleUrl: './sprint.scss',
 })
@@ -42,7 +43,8 @@ constructor(
   private sprintService: SprintService,
   private quarterService: Quarter,
   private route: ActivatedRoute,
-  private cdr: ChangeDetectorRef
+  private cdr: ChangeDetectorRef,
+  private router: Router
 ) {}
 
 ngOnInit() { 
@@ -122,4 +124,8 @@ next() {
       .subscribe(() => this.load(this.sprint.id));      
   };
 
+  deleteSprint = () => {
+    this.sprintService.delete(this.sprint.id)
+      .subscribe(() => this.router.navigate(['/sprints']));
+  };
 }

@@ -1,0 +1,65 @@
+<div class="container mt-4">
+
+    <h2 class="text-center">
+        Timeline da Coatend: {{ coatend?.description || 'coatend não associada.' }}
+    </h2>
+
+  <!-- FORM -->
+  <div class="card mt-3">
+    <div class="card-body">
+
+      <form (ngSubmit)="create()">
+
+        <label for="selectLabel">Atividades:</label>
+        <select [(ngModel)]="form.activity" name="activity" class="form-select mb-2">
+            <option *ngFor="let a of activities" [value]="a">
+            {{ activityLabels[a] || a }}
+            </option>
+        </select>
+
+        <label for="selectLabel">Desenvolvedores:</label>
+        <select [(ngModel)]="form.developerId" name="developerId" class="form-select mb-2">
+          <option *ngFor="let d of developers" [value]="d.id">
+            {{ d.name }}
+          </option>
+        </select>
+
+        <div class="row">
+          <div class="col">
+            <label for="inputLabel">Data início:</label>
+            <input type="date" [(ngModel)]="form.startDate" name="startDate" class="form-control">
+          </div>
+          <div class="col">
+            <label for="inputLabel">Data fim:</label>
+            <input type="date" [(ngModel)]="form.endDate" name="endDate" class="form-control">
+          </div>
+        </div>
+
+        <button class="btn btn-success w-100 mt-3">Adicionar</button>
+
+      </form>
+
+    </div>
+  </div>
+
+  <!-- LIST -->
+  <div class="mt-4">
+
+    <div *ngFor="let t of timeline" class="card mb-2">
+
+      <div class="card-body">
+        <strong>{{ t.activity }}</strong>
+
+        <div>👨‍💻 {{ t.developerName }}</div>
+
+        <div>
+          {{ t.startDate | date:'shortDate' }} →
+          {{ t.endDate | date:'shortDate' }}
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>

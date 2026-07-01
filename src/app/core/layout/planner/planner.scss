@@ -1,0 +1,17 @@
+.planner-table th,
+.planner-table td {
+  min-width: 90px;
+  vertical-align: middle;
+}
+
+.planner-fixed-column {
+  min-width: 180px;
+  position: sticky;
+  left: 0;
+  background: white;
+  z-index: 2;
+}
+
+thead .planner-fixed-column {
+  z-index: 3;
+}

@@ -1,0 +1,10 @@
+<h2>Desenvolvedores</h2>
+
+<ul>
+  <li *ngFor="let d of developers">
+    {{ d.name }}
+  </li>
+</ul>
+
+<input [(ngModel)]="newDev" placeholder="Nome">
+<button (click)="create()">Criar</button>

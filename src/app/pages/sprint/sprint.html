@@ -1,5 +1,8 @@
 <div *ngIf="sprint"> 
-  <h1 class="text-center">{{description}}</h1>
+  <div class="row align-items-center justify-content-center">
+    <h1 class="text-center">{{description}}</h1>
+  </div>
+  
 
   <div class="d-flex align-items-center">
     <div class="flex-grow-1">
@@ -45,9 +48,14 @@
   [updateFn]="updateSprint">
 </app-dynamic-edit-component>
 
+<app-delete-button
+  label="Excluir Sprint"
+  [deleteFn]="deleteSprint"
+  class="col-2 mr-0">
+</app-delete-button>
+
 <app-move-to
   title="Mover Sprint para outro Quarter"
   [options]="quartersOptions"
   [moveFn]="moveSprint">
 </app-move-to>
- 

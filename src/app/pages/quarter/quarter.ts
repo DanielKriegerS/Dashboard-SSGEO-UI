@@ -1,5 +1,5 @@
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { CardComponent } from '../../shared/components/card/card';
 import { Quarter } from '../../services/quarter';
@@ -11,10 +11,11 @@ import { Datecomponent } from "../../shared/components/datecomponent/datecompone
 import { QuarterUpdatePayload } from '../../models/quarter/QuarterUpdatePayload';
 import { FormField } from '../../models/components/FormField';
 import { DynamicEditComponent } from "../../shared/components/dynamic-edit-component/dynamic-edit-component";
+import { DeleteButton } from "../../shared/components/delete-button/delete-button";
 
 @Component({
   standalone: true,
-  imports: [CommonModule, CardComponent, RouterLink, Notfoundfallback, CarouselNavigator, Datecomponent, DynamicEditComponent],
+  imports: [CommonModule, CardComponent, RouterLink, Notfoundfallback, CarouselNavigator, Datecomponent, DynamicEditComponent, DeleteButton],
   styleUrls: ['./quarter.scss'],
   templateUrl: './quarter.html'
 })
@@ -36,7 +37,8 @@ export class QuarterComponent implements OnInit {
   constructor(
     private route: ActivatedRoute,
     private service: Quarter,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
@@ -50,7 +52,6 @@ export class QuarterComponent implements OnInit {
   this.service.getById(id).subscribe(res => {
     this.quarter = res;
     this.sprints = res.sprints || [];
-    console.log(this.sprints)
     this.description = res.description;
     this.updateVisible();
 
@@ -93,5 +94,10 @@ export class QuarterComponent implements OnInit {
   
   this.service.update(this.quarter.id, payload)
     .subscribe(() => this.load(this.quarter.id));      
+  };
+
+  deleteQuarter = () => {
+    this.service.delete(this.quarter.id)
+      .subscribe(() => this.router.navigate(['/quarters']));
   };
 }

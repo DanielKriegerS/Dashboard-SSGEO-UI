@@ -34,4 +34,8 @@ export class SprintService {
   update(sprintId: string, payload: SprintUpdatePayload) : Observable<SprintSummary> {
     return this.http.put<SprintSummary>(`${this.baseUrl}/${sprintId}`, payload);
   }
+  
+  delete(sprintId: string) : Observable<void>{
+    return this.http.delete<void>(`${this.baseUrl}/${sprintId}`)
+  }
 }
