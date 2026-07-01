@@ -220,7 +220,8 @@ buildPlannerHierarchy(
         const entries: PlannerEntries[] = rawEntries.map(t => ({
           activity: t.activity,
           developerId: t.developerId,
-          developerName: t.developerName
+          developerName: t.developerName,
+          developerColor: t.developerColor
         }));
 
         return {

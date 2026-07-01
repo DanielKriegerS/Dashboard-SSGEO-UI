@@ -3,10 +3,10 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_URL } from '../config/api.config';
 import { DeveloperModel } from '../models/developer/DeveloperModel';
+import { DeveloperUpdatePayload } from '../models/developer/DeveloperUpdatePayload';
 
 @Injectable({ providedIn: 'root' })
 export class DeveloperService {
-
   private baseUrl = `${API_URL}/developers`;
 
   constructor(private http: HttpClient) {}
@@ -17,5 +17,9 @@ export class DeveloperService {
 
   create(data: { name: string }) {
     return this.http.post(this.baseUrl, data);
+  }
+
+  update(id: string, payload: DeveloperUpdatePayload): Observable<DeveloperModel> {
+    return this.http.patch<DeveloperModel>(`${this.baseUrl}/${id}`, payload);
   }
 }

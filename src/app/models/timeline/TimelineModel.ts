@@ -5,5 +5,6 @@ export interface TimelineModel {
   endDate: string;
   developerId: string;
   developerName: string;
+  developerColor: string;
   coatendId: string;
 }

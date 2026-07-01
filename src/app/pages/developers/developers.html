@@ -1,10 +1,90 @@
-<h2>Desenvolvedores</h2>
+<div class="container mt-4">
 
-<ul>
-  <li *ngFor="let d of developers">
-    {{ d.name }}
-  </li>
-</ul>
+  <h2 class="title text-center mb-4 ">Desenvolvedores</h2>
 
-<input [(ngModel)]="newDev" placeholder="Nome">
-<button (click)="create()">Criar</button>
+  <div class="mt-4">
+
+    <div
+      class="card mb-2 shadow-sm"
+      *ngFor="let dev of developers">
+
+      <div class="card-body">
+
+        <div
+          class="d-flex justify-content-between align-items-center"
+          *ngIf="editingDeveloperId !== dev.id">
+
+          <div class="d-flex align-items-center gap-2">
+            <span
+              class="rounded"
+              [style.background-color]="dev.color || '#000000'"
+              style="width: 22px; height: 22px; display: inline-block;">
+            </span>
+
+            <strong>{{ dev.name }}</strong>
+
+            <small class="text-muted">
+              {{ dev.color || '#000000' }}
+            </small>
+          </div>
+
+          <button
+            class="btn btn-sm btn-outline-warning"
+            (click)="startEdit(dev)">
+            ✏️
+          </button>
+        </div>
+
+        <div *ngIf="editingDeveloperId === dev.id">
+
+          <div class="mb-3">
+            <label class="form-label">Nome</label>
+            <input
+              class="form-control"
+              [(ngModel)]="editData.name"
+              name="editName">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Cor</label>
+
+            <div class="d-flex align-items-center gap-2">
+              <input
+                type="color"
+                class="form-control form-control-color"
+                [(ngModel)]="editData.color"
+                name="editColor">
+
+              <span>
+                {{ editData.color }}
+              </span>
+            </div>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button
+              class="btn btn-success btn-sm"
+              (click)="updateDeveloper(dev)">
+              Salvar
+            </button>
+
+            <button
+              class="btn btn-secondary btn-sm"
+              (click)="cancelEdit()">
+              Cancelar
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<app-dynamicformcomponent
+  title="Novo Desenvolvedor"
+  [fields]="fields"
+  [submitFn]="createDeveloper">
+</app-dynamicformcomponent>

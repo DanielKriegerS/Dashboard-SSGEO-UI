@@ -34,11 +34,23 @@ export class Planner {
     return map[activity] || activity.substring(0, 2);
   }
 
-  getColor(devId?: string) {
-    if (!devId) return '';
+  getTextColor(backgroundColor?: string): string {
+    if (!backgroundColor) {
+      return '#ffffff';
+    }
 
-    return devId.endsWith('1')
-      ? 'bg-primary text-white'
-      : 'bg-danger text-white';
+    const hex = backgroundColor.replace('#', '');
+
+    if (hex.length !== 6) {
+      return '#ffffff';
+    }
+
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+
+    return brightness > 150 ? '#000000' : '#ffffff';
   }
 }

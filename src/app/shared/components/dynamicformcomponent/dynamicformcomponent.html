@@ -18,7 +18,8 @@
           <label class="form-label">{{ field.label }}</label>
 
           <input
-            class="form-control"
+            [class.form-control]="!isColorField(field)"
+            [class.form-control-color]="isColorField(field)"
             [(ngModel)]="formData[field.name]"
             [name]="field.name"
             [type]="field.type"
