@@ -1,0 +1,16 @@
+<div class="feedback-container" *ngIf="message$ | async as feedback">
+  <div
+    class="alert alert-dismissible fade show shadow"
+    [ngClass]="getAlertClass(feedback.type)"
+    role="alert">
+
+    {{ feedback.message }}
+
+    <button
+      type="button"
+      class="btn-close"
+      aria-label="Close"
+      (click)="close()">
+    </button>
+  </div>
+</div>

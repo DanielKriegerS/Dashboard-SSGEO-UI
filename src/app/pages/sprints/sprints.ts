@@ -8,6 +8,7 @@ import { FormField } from '../../models/components/FormField';
 import { Dynamicformcomponent } from "../../shared/components/dynamicformcomponent/dynamicformcomponent";
 import { SprintSummary } from '../../models/sprint/SprintSummary';
 import { SprintCreateModel } from '../../models/sprint/SprintCreateModel';
+import { FeedbackService } from '../../services/feedback';
 
 @Component({
   selector: 'app-sprints',
@@ -26,7 +27,8 @@ export class SprintsComponent implements OnInit {
   constructor(
     private route: ActivatedRoute,
     private service: SprintService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private feedback : FeedbackService
   ) {}
 
   fields: FormField[] = [
@@ -68,6 +70,9 @@ next() {
   }
 
   createSprint = (data: SprintCreateModel) => {
-      this.service.create(data).subscribe(() => this.load());
+      this.service.create(data).subscribe(() => {
+        this.feedback.success('Sprint criada com sucesso!');        
+        this.load()
+      });
   }
 }

@@ -12,6 +12,7 @@ import { QuarterUpdatePayload } from '../../models/quarter/QuarterUpdatePayload'
 import { FormField } from '../../models/components/FormField';
 import { DynamicEditComponent } from "../../shared/components/dynamic-edit-component/dynamic-edit-component";
 import { DeleteButton } from "../../shared/components/delete-button/delete-button";
+import { FeedbackService } from '../../services/feedback';
 
 @Component({
   standalone: true,
@@ -38,7 +39,8 @@ export class QuarterComponent implements OnInit {
     private route: ActivatedRoute,
     private service: Quarter,
     private cdr: ChangeDetectorRef,
-    private router: Router
+    private router: Router,
+    private feedback: FeedbackService
   ) {}
 
   ngOnInit(): void {
@@ -93,11 +95,18 @@ export class QuarterComponent implements OnInit {
   };
   
   this.service.update(this.quarter.id, payload)
-    .subscribe(() => this.load(this.quarter.id));      
+    .subscribe(() => {
+      this.feedback.success('Trimestre atualizado com sucesso!');
+      this.load(this.quarter.id)
+    });      
   };
 
   deleteQuarter = () => {
     this.service.delete(this.quarter.id)
-      .subscribe(() => this.router.navigate(['/quarters']));
+      
+    .subscribe(() => {
+      this.feedback.success('Quarter excluído com sucesso.');
+      this.router.navigate(['/quarters']);
+    });
   };
 }

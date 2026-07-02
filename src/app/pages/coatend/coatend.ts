@@ -15,6 +15,7 @@ import { TimelineCreateModel } from '../../models/timeline/TimelineCreateModel';
 import { TimelineService } from '../../services/timeline-service';
 import { DeveloperService } from '../../services/developer-service';
 import { FormsModule } from '@angular/forms';
+import { FeedbackService } from '../../services/feedback';
 
 @Component({
   standalone: true,
@@ -50,6 +51,7 @@ export class CoatendComponent implements OnInit {
     private cdr: ChangeDetectorRef,
     private router: Router,    
     private timelineService: TimelineService,
+    private feedback: FeedbackService
   ) {}
 
   ngOnInit(): void {
@@ -86,6 +88,7 @@ export class CoatendComponent implements OnInit {
   createTimeline() {
     this.timelineService.create(this.coatend.id, this.form)
       .subscribe(() => {
+        this.feedback.success('Atividade criada com sucesso!');
         this.resetForm();
       });
   }
@@ -107,6 +110,7 @@ export class CoatendComponent implements OnInit {
     this.service
       .updateCoatendSprint(this.coatend.id, request)
       .subscribe(() => {
+        this.feedback.success('Coatend movida com sucesso!');
         this.load(this.coatend.id);
       });
   };
@@ -119,11 +123,17 @@ export class CoatendComponent implements OnInit {
     };
     
     this.service.update(this.coatend.id, payload)
-      .subscribe(() => this.load(this.coatend.id));      
+      .subscribe(() => {
+        this.feedback.success('Coatend atualizada com sucesso!');
+        this.load(this.coatend.id)
+      });      
   };
 
   deleteCoatend = () => {
     this.service.delete(this.coatend.id)
-      .subscribe(() => this.router.navigate(['/coatends']));
+      .subscribe(() => {
+        this.feedback.success('Coatend excluída com sucesso!');
+        this.router.navigate(['/coatends']);
+      });
   };
 }

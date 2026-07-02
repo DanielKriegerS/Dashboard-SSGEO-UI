@@ -6,6 +6,7 @@ import { DeveloperService } from '../../services/developer-service';
 import { FormField } from '../../models/components/FormField';
 import { Dynamicformcomponent } from "../../shared/components/dynamicformcomponent/dynamicformcomponent";
 import { DeveloperUpdatePayload } from '../../models/developer/DeveloperUpdatePayload';
+import { FeedbackService } from '../../services/feedback';
 
 @Component({
   selector: 'app-developers',
@@ -35,7 +36,8 @@ export class Developers implements OnInit{
 
   constructor(
     private service: DeveloperService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private feedback: FeedbackService
   ) {}
 
   ngOnInit(): void {
@@ -52,7 +54,10 @@ export class Developers implements OnInit{
   }
 
   createDeveloper = (data: DeveloperModel) => {
-    this.service.create(data).subscribe(() => this.load());
+    this.service.create(data).subscribe(() => {
+      this.feedback.success('Desenvolvedor criado com sucesso!');
+      this.load()
+    });
   }
 
   
@@ -87,6 +92,7 @@ startEdit(dev: DeveloperModel): void {
     }
 
     this.service.update(dev.id, payload).subscribe(() => {
+      this.feedback.success('Dados do desenvolvedor atualizado com sucesso!');
       this.cancelEdit();
       this.load();
     });

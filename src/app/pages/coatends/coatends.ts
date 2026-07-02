@@ -8,6 +8,7 @@ import { Notfoundfallback } from "../../shared/components/notfoundfallback/notfo
 import { FormField } from '../../models/components/FormField';
 import { Dynamicformcomponent } from "../../shared/components/dynamicformcomponent/dynamicformcomponent";
 import { CoatendModel } from '../../models/coatend/CoatendModel';
+import { FeedbackService } from '../../services/feedback';
 
 @Component({
   imports: [CardComponent, RouterLink, CommonModule, Notfoundfallback, Dynamicformcomponent],
@@ -29,7 +30,8 @@ fields: FormField[] = [
   constructor(
     private route: ActivatedRoute,
     private service: CoatendService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private feedback: FeedbackService
   ) {}
 
   ngOnInit(): void {
@@ -65,7 +67,10 @@ next() {
   }
 
   createCoatend = (data: CoatendModel) => {
-      this.service.create(data).subscribe(() => this.load());
+      this.service.create(data).subscribe(() => {
+        this.feedback.success('Coatend criado com sucesso!');
+        this.load()
+      });
   };
 
 }

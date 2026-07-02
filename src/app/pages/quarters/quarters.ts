@@ -9,6 +9,7 @@ import { Dynamicformcomponent } from "../../shared/components/dynamicformcompone
 import { FormField } from '../../models/components/FormField';
 import { QuarterCreateModel } from '../../models/quarter/QuarterCreateModel';
 import { CarouselNavigator } from "../../shared/components/carousel-navigator/carousel-navigator";
+import { FeedbackService } from '../../services/feedback';
 
 @Component({
   standalone: true,
@@ -24,7 +25,8 @@ export class QuartersComponent {
 
   constructor(
     private service: QuarterService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private feedback: FeedbackService
   ) {}
 
 
@@ -67,6 +69,9 @@ next() {
   }
 
   createQuarter = (data : QuarterCreateModel) => {
-    this.service.create(data).subscribe(() => this.load());
+    this.service.create(data).subscribe(() => {
+      this.feedback.success('Quarter criado com sucesso!');
+      this.load();
+    });
   };
 }

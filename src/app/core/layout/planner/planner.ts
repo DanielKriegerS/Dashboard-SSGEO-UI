@@ -24,8 +24,8 @@ export class Planner {
     const map: any = {
       DEVELOPMENT: 'De',
       TESTING_TU: 'Tu',
-      PASSAGE_TH: 'Th',
-      HOMOLOGATION: 'Ho',
+      PASSAGE_TH: 'Ph',
+      HOMOLOGATION: 'Th',
       ADMINISTRATIVE_TASKS: 'Ad',
       PRE_SWAP: 'Ps',
       SWAP: 'Sw'
@@ -34,23 +34,27 @@ export class Planner {
     return map[activity] || activity.substring(0, 2);
   }
 
+  safeColor(color?: string): string {
+    if (!color || !/^#[0-9A-Fa-f]{6}$/.test(color)) {
+      return '#000000';
+    }
+
+    return color;
+  }
+
+
   getTextColor(backgroundColor?: string): string {
-    if (!backgroundColor) {
-      return '#ffffff';
-    }
+    
+  const safe = this.safeColor(backgroundColor);
+  const hex = safe.replace('#', '');
 
-    const hex = backgroundColor.replace('#', '');
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
 
-    if (hex.length !== 6) {
-      return '#ffffff';
-    }
+  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
 
-    const r = parseInt(hex.substring(0, 2), 16);
-    const g = parseInt(hex.substring(2, 4), 16);
-    const b = parseInt(hex.substring(4, 6), 16);
+  return brightness > 150 ? '#000000' : '#ffffff';
 
-    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-
-    return brightness > 150 ? '#000000' : '#ffffff';
   }
 }

@@ -15,6 +15,7 @@ import { DynamicEditComponent } from '../../shared/components/dynamic-edit-compo
 import { FormField } from '../../models/components/FormField';
 import { SprintUpdatePayload } from '../../models/sprint/SprintUpdatePayload';
 import { DeleteButton } from "../../shared/components/delete-button/delete-button";
+import { FeedbackService } from '../../services/feedback';
  
 @Component({
   selector: 'app-sprint',
@@ -44,7 +45,8 @@ constructor(
   private quarterService: Quarter,
   private route: ActivatedRoute,
   private cdr: ChangeDetectorRef,
-  private router: Router
+  private router: Router,
+  private feedback : FeedbackService
 ) {}
 
 ngOnInit() { 
@@ -107,6 +109,7 @@ next() {
     this.sprintService
       .updateSprintQuarter(this.sprint.id, request)
       .subscribe(() => {
+        this.feedback.success('Sprint movida com sucesso!');
         this.load(this.sprint.id);
       });
   };
@@ -121,11 +124,17 @@ next() {
   };
 
     this.sprintService.update(this.sprint.id, payload)
-      .subscribe(() => this.load(this.sprint.id));      
+      .subscribe(() => {
+        this.feedback.success('Sprint atualizada com sucesso!');
+        this.load(this.sprint.id);
+      });      
   };
 
   deleteSprint = () => {
     this.sprintService.delete(this.sprint.id)
-      .subscribe(() => this.router.navigate(['/sprints']));
+      .subscribe(() => {
+        this.feedback.success('Sprint excluída com sucesso!');
+        this.router.navigate(['/sprints']);
+      });
   };
 }

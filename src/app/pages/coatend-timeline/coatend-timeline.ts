@@ -10,6 +10,7 @@ import { FormsModule } from '@angular/forms';
 import { Activity } from '../../models/components/Activities';
 import { CoatendCompleteModel } from '../../models/coatend/CoatendCompleteModel';
 import { CoatendService } from '../../services/coatend';
+import { FeedbackService } from '../../services/feedback';
 
 @Component({
   selector: 'app-coatend-timeline',
@@ -48,7 +49,8 @@ export class CoatendTimelineComponent {
     private timelineService: TimelineService,
     private developerService: DeveloperService,
     private coatendService: CoatendService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private feedback: FeedbackService
   ) {}
 
   ngOnInit() {
@@ -93,6 +95,7 @@ loadTimeline(coatendId: string) {
 
     this.timelineService.create(this.coatendId, this.form)
       .subscribe(() => {
+        this.feedback.success('Atividade criada com sucesso!');
         this.resetForm();
         this.loadTimeline(this.coatendId);
       });
