@@ -22,4 +22,8 @@ export class DeveloperService {
   update(id: string, payload: DeveloperUpdatePayload): Observable<DeveloperModel> {
     return this.http.patch<DeveloperModel>(`${this.baseUrl}/${id}`, payload);
   }
+
+  delete(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${id}`);
+  }
 }

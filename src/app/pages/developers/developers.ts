@@ -49,8 +49,7 @@ export class Developers implements OnInit{
       res => {
       this.developers = res
       this.cdr.detectChanges();
-      }
-    );
+      });
   }
 
   createDeveloper = (data: DeveloperModel) => {
@@ -98,4 +97,12 @@ startEdit(dev: DeveloperModel): void {
     });
   }
 
+  deleteDeveloper(dev: DeveloperModel): void {
+    if (confirm(`Tem certeza que deseja deletar o desenvolvedor ${dev.name}?`)) {
+      this.service.delete(dev.id).subscribe(() => {
+        this.feedback.success('Desenvolvedor deletado com sucesso!');
+        this.load();
+      });
+    }
+  }
 }

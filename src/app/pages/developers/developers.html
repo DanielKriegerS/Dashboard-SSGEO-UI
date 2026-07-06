@@ -28,11 +28,18 @@
             </small>
           </div>
 
-          <button
-            class="btn btn-sm btn-outline-warning"
-            (click)="startEdit(dev)">
-            ✏️
-          </button>
+          <div class="d-flex gap-2">
+            <button
+              class="btn btn-sm btn-outline-warning"
+              (click)="startEdit(dev)">
+              ✏️
+            </button>
+            <button
+              class="btn btn-sm btn-outline-danger"
+              (click)="deleteDeveloper(dev)">
+              🗑️
+            </button>
+          </div>
         </div>
 
         <div *ngIf="editingDeveloperId === dev.id">
