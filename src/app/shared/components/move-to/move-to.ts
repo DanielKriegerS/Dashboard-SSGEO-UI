@@ -11,6 +11,7 @@ import { FormsModule } from '@angular/forms';
 export class MoveTo {
   
   @Input() title = 'Mover para';
+  @Input() hierarchyLevel = '';
   @Input() options: { id: string; label: string }[] = [];
   @Input() moveFn!: (targetId: string) => void;
 

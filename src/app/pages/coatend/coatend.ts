@@ -31,6 +31,8 @@ export class CoatendComponent implements OnInit {
   timeline: TimelineModel[] = [];
   developers: { id: string; name: string }[] = [];
 
+  sprintDescription: string = '';
+
   form: TimelineCreateModel = {
     activity: '',
     startDate: '',
@@ -65,7 +67,8 @@ export class CoatendComponent implements OnInit {
   load(id: string) {
     this.service.getById(id).subscribe(res => {
       this.coatend = res;
-      
+      this.sprintDescription = res.sprintDescription;
+
       this.coatendToUpdate = {
         description: res.description,
         coatendNumber: res.coatendNumber

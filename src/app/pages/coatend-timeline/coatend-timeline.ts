@@ -43,6 +43,16 @@ export class CoatendTimelineComponent {
   };
   
   activities = Object.values(Activity);
+    // Mapping to determine if an activity requires a developer
+    activityRequiresDeveloper: Record<string, boolean> = {
+    DEVELOPMENT: true,
+    TESTING_TU: true,
+    PASSAGE_TH: true,
+    HOMOLOGATION: false,
+    ADMINISTRATIVE_TASKS: false,
+    PRE_SWAP: false,
+    SWAP: false
+  };
 
   constructor(
     private route: ActivatedRoute,
@@ -84,6 +94,10 @@ loadTimeline(coatendId: string) {
   loadDevelopers() {
     this.developerService.getAll()
       .subscribe(res => this.developers = res);
+  }
+
+  requiresDeveloper(activity: string): boolean {
+    return this.activityRequiresDeveloper[activity] ?? true;
   }
 
   create() {

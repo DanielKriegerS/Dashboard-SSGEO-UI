@@ -30,6 +30,7 @@ export class SprintComponent {
   visibleCoatends: CoatendSummary[] = [];
   startIndex = 0;
   description: string = '';
+  quarterDescription: string = '';
   quartersOptions: { id: string; label: string }[] = [];
   quarterId!: SprintMoveModel;
   sprintToUpdate!: SprintUpdatePayload;
@@ -62,6 +63,7 @@ load(id: string) {
     this.sprint = res;
     this.coatends = res.coatends || [];
     this.description = res.description;
+    this.quarterDescription = res.quarterDescription;
     this.updateVisible();
 
     this.sprintToUpdate = {
