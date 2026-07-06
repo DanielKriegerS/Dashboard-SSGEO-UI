@@ -54,12 +54,12 @@
 
                 <span
                   *ngFor="let entry of cell.entries"
-                  class="px-1 rounded planner-entry"
-                  [style.background-color]="entry.developerColor || '#000000'"
-                  [style.color]="getTextColor(entry.developerColor)">
-
+                  class="px-1 rounded planner-entry"  
+                  [style.background-color]="safeColor(entry.performerColor)"
+                  [style.color]="getTextColor(entry.performerColor)"
+                  [title]="entry.performerName"
+                >
                   {{ getShortActivity(entry.activity) }}
-
                 </span>
 
               </div>

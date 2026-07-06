@@ -8,7 +8,6 @@ import { Planner } from "../../layout/planner/planner";
 import { CoatendService } from '../../../services/coatend';
 import { forkJoin } from 'rxjs';
 import { TimelineService } from '../../../services/timeline-service';
-import { CoatendSummary } from '../../../models/coatend/CoatendSummary';
 import { PlannerQuarterGroup } from '../../../models/components/planner/PlannerQuarterGroup';
 import { CoatendPlannerModel } from '../../../models/components/planner/CoatendPlannerModel';
 import { PlannerEntries } from '../../../models/components/planner/PlannerEntries';
@@ -221,7 +220,9 @@ buildPlannerHierarchy(
           activity: t.activity,
           developerId: t.developerId,
           developerName: t.developerName,
-          developerColor: t.developerColor
+          developerColor: t.developerColor,          
+          performerName: t.performerName,
+          performerColor: t.performerColor
         }));
 
         return {

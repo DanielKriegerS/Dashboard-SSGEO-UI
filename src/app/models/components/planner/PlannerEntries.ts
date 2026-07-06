@@ -1,6 +1,8 @@
 export interface PlannerEntries{
     activity: string;
-    developerId: string;
-    developerName: string;
-    developerColor: string;
+    developerId?: string;
+    developerName?: string;
+    developerColor?: string;
+    performerName: string;
+    performerColor: string;
   }
