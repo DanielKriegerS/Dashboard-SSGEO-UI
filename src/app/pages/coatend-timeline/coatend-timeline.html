@@ -11,18 +11,44 @@
       <form (ngSubmit)="create()">
 
         <label for="selectLabel">Atividades:</label>
-        <select [(ngModel)]="form.activity" name="activity" class="form-select mb-2">
-            <option *ngFor="let a of activities" [value]="a">
+        
+        <select
+          class="form-select mb-2"
+          [ngModel]="form.activity"
+          (ngModelChange)="onActivityChange($event)"
+          name="activity">
+
+          <option *ngFor="let a of activities" [value]="a">
             {{ activityLabels[a] || a }}
-            </option>
+          </option>
+
         </select>
 
-        <label for="selectLabel">Desenvolvedores:</label>
-        <select [(ngModel)]="form.developerId" name="developerId" class="form-select mb-2">
-          <option *ngFor="let d of developers" [value]="d.id">
-            {{ d.name }}
-          </option>
-        </select>
+        <div *ngIf="requiresDeveloper(form.activity)">
+          <label>Desenvolvedor</label>
+
+          <option [ngValue]="null">Selecione um desenvolvedor</option>
+
+          <select
+            class="form-select mb-2"
+            [(ngModel)]="form.developerId"
+            name="developerId">
+
+            <option *ngFor="let d of developers" [value]="d.id">
+              {{ d.name }}
+            </option>
+
+          </select>
+        </div>
+        
+        <div *ngIf="!requiresDeveloper(form.activity)">
+          <label>Executor</label>
+
+          <input
+            class="form-control mb-2"
+            [value]="getFixedExecutor(form.activity)"
+            disabled>
+        </div>
 
         <div class="row">
           <div class="col">

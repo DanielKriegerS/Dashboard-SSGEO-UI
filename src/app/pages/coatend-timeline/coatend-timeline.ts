@@ -29,7 +29,7 @@ export class CoatendTimelineComponent {
     activity: Activity.DEVELOPMENT,
     startDate: '',
     endDate: '',
-    developerId: ''
+    developerId: null
   };
 
   activityLabels: Record<Activity, string> = {
@@ -52,6 +52,13 @@ export class CoatendTimelineComponent {
     ADMINISTRATIVE_TASKS: false,
     PRE_SWAP: false,
     SWAP: false
+  };
+  
+  activityFixedExecutors: Record<string, string> = {
+    HOMOLOGATION: 'Homologação',
+    ADMINISTRATIVE_TASKS: 'Administrativo',
+    PRE_SWAP: 'Equipe Swap',
+    SWAP: 'Equipe Swap'
   };
 
   constructor(
@@ -100,27 +107,48 @@ loadTimeline(coatendId: string) {
     return this.activityRequiresDeveloper[activity] ?? true;
   }
 
+  getFixedExecutor(activity: string): string {
+    return this.activityFixedExecutors[activity] ?? 'Executor fixo';
+  }
+
   create() {
 
-    if (!this.form.activity || !this.form.developerId) {
+    if (!this.form.activity || !this.form.endDate || !this.form.startDate || (this.requiresDeveloper(this.form.activity) && !this.form.developerId)) {
       alert('Preencha todos os campos obrigatórios');
       return;
     }
 
-    this.timelineService.create(this.coatendId, this.form)
+    const payload: TimelineCreateModel = {
+      activity: this.form.activity,
+      startDate: this.form.startDate,
+      endDate: this.form.endDate,
+      developerId: this.requiresDeveloper(this.form.activity)
+        ? this.form.developerId
+        : null
+    };
+
+    this.timelineService.create(this.coatendId, payload)
       .subscribe(() => {
-        this.feedback.success('Atividade criada com sucesso!');
         this.resetForm();
         this.loadTimeline(this.coatendId);
       });
   }
 
-  resetForm() {
-    this.form = {
-      activity: Activity.DEVELOPMENT,
-      startDate: '',
-      endDate: '',
-      developerId: ''
-    };
+
+  onActivityChange(activity: string): void {
+    this.form.activity = activity;
+
+    if (!this.requiresDeveloper(activity)) {
+      this.form.developerId = null;
+    }
   }
+
+    resetForm() {
+      this.form = {
+        activity: 'DEVELOPMENT',
+        startDate: '',
+        endDate: '',
+        developerId: null
+      };
+    }
 }

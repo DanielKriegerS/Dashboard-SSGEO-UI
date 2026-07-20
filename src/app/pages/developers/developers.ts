@@ -33,7 +33,6 @@ export class Developers implements OnInit{
     color?: string;
   } = {};
 
-
   constructor(
     private service: DeveloperService,
     private cdr: ChangeDetectorRef,

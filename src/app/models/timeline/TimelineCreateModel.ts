@@ -2,5 +2,5 @@ export interface TimelineCreateModel {
   activity: string;
   startDate: string;
   endDate: string;
-  developerId: string;
+  developerId?: string | null;
 }

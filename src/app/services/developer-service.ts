@@ -15,7 +15,7 @@ export class DeveloperService {
     return this.http.get<DeveloperModel[]>(this.baseUrl);
   }
 
-  create(data: { name: string }) {
+  create(data: DeveloperModel) {
     return this.http.post(this.baseUrl, data);
   }
 
