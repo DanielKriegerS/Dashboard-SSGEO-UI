@@ -4,7 +4,6 @@ import { Observable } from 'rxjs';
 import { TimelineModel } from '../models/timeline/TimelineModel';
 import { TimelineCreateModel } from '../models/timeline/TimelineCreateModel';
 import { API_URL } from '../config/api.config';
-import { CoatendPlannerModel } from '../models/components/planner/CoatendPlannerModel';
 
 @Injectable({
   providedIn: 'root'
