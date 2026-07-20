@@ -25,12 +25,7 @@ export class Dynamicformcomponent implements OnInit {
   
   initializeDefaults(): void {
     for (const field of this.fields) {
-      if (field.type === 'color' && (
-          this.formData[field.name] === '' ||
-          this.formData[field.name] === undefined || 
-          !this.formData[field.name]
-        )
-      ) {
+      if (!this.isValidColorField(field)) {
         this.formData[field.name] = '#000000';
       }
     }
@@ -39,7 +34,7 @@ export class Dynamicformcomponent implements OnInit {
   submit() {
     this.submitFn(this.formData);
     this.onSuccess.emit();
-    this.formData = {};
+    this.resetFormData()
   }
   
   toggle() {
@@ -49,11 +44,43 @@ export class Dynamicformcomponent implements OnInit {
   isColorField(field: FormField): boolean {
     return field.type === 'color';
   }
-
   
   isValidHexColor(value: string): boolean {
     return /^#[0-9A-Fa-f]{6}$/.test(value ?? '');
   }
 
-}
+  isValidColorField(field: FormField): boolean {
+    const value = this.formData[field.name];
+    
+    if (!this.isColorField(field)) {
+      return true; 
+    }
 
+    if (
+        value === undefined || 
+        value === null ||
+        value === '' ||
+        !value
+      ) {
+      return false; 
+    }
+
+    return this.isValidHexColor(value);
+  }
+
+  
+resetFormData(): void {
+    const initialData: any = {};
+
+    for (const field of this.fields) {
+      if (field.type === 'color') {
+        initialData[field.name] = '#000000';
+      } else {
+        initialData[field.name] = '';
+      }
+    }
+
+    this.formData = initialData;
+  }
+
+}
