@@ -1,11 +1,11 @@
-import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, inject, OnInit, ViewChild } from '@angular/core';
 import { Meta, Title } from '@angular/platform-browser';
 import { PlannerRow } from '../../../models/components/planner/PlannerRow';
 import { PlannerCell } from '../../../models/components/planner/PlannerCell';
 import { TimelineModel } from '../../../models/timeline/TimelineModel';
 import { Planner } from "../../layout/planner/planner";
 import { CoatendService } from '../../../services/coatend';
-import { forkJoin, map, Observable, of, switchMap } from 'rxjs';
+import { finalize, forkJoin, map, Observable, of, switchMap, tap } from 'rxjs';
 import { TimelineService } from '../../../services/timeline-service';
 import { Quarter as QuarterService } from '../../../services/quarter';
 import { PlannerQuarterGroup } from '../../../models/components/planner/PlannerQuarterGroup';
@@ -13,7 +13,7 @@ import { CoatendPlannerModel } from '../../../models/components/planner/CoatendP
 import { PlannerEntries } from '../../../models/components/planner/PlannerEntries';
 import { PlannerHeader } from '../../../models/components/planner/PlannerHeader';
 import { PlannerDateSegment } from '../../../models/components/planner/PlannerDateSegment';
-import { CommonModule } from '@angular/common';
+import { CommonModule, DOCUMENT } from '@angular/common';
 import { SprintService } from '../../../services/sprint';
 import { SprintSummary } from '../../../models/sprint/SprintSummary';
 import { QuarterSummary } from '../../../models/quarter/QuarterSummary';
@@ -29,14 +29,21 @@ import { TimelineService as TimelineMutationService } from '../../../services/ti
 import { PlannerDisplayOptions } from '../../layout/planner-display-options/planner-display-options';
 import { PlannerDisplaySelection } from '../../../models/components/planner/PlannerDisplaySelection';
 import { requiresActivityDeveloper } from '../../../models/components/Activities';
+import { PlannerExportService } from '../../../services/planner-export';
+import { PlannerExportRequest } from '../../../models/components/planner/PlannerExportRequest';
+import { PlannerExportOptions } from '../../layout/planner-export-options/planner-export-options';
 
 @Component({
   selector: 'app-main',
-  imports: [Planner, CommonModule, PlannerDisplayOptions],
+  imports: [Planner, CommonModule, PlannerDisplayOptions, PlannerExportOptions],
   templateUrl: './main.html',
   styleUrl: './main.scss',
 })
 export class Main implements OnInit{
+  @ViewChild(PlannerExportOptions) exportOptions?: PlannerExportOptions;
+  private readonly document = inject(DOCUMENT);
+  private readonly plannerExportService = inject(PlannerExportService);
+  exporting = false;
   plannerData: PlannerRow[] = [];
   plannerHierarchy: PlannerQuarterGroup[] = [];
   
@@ -93,6 +100,48 @@ export class Main implements OnInit{
 
   ngOnInit() {
     this.loadPlannerData();
+  }
+
+  openExportOptions(): void {
+    this.exportOptions?.open(this.displaySelection, this.visibleDays);
+  }
+
+  exportPlanner(request: PlannerExportRequest): void {
+    if (this.exporting) {
+      return;
+    }
+    this.exporting = true;
+    this.plannerExportService.export(request).pipe(
+      tap(blob => this.downloadPlannerFile(blob)),
+      finalize(() => {
+        this.exporting = false;
+        this.cdr.detectChanges();
+      })
+    ).subscribe({
+      next: () => {
+        if (this.exportOptions) {
+          this.exportOptions.opened = false;
+        }
+      },
+      error: error => {
+        console.error('Erro ao exportar planner:', error);
+        this.feedback.error('Não foi possível exportar o planner. Tente novamente.');
+      }
+    });
+  }
+
+  private downloadPlannerFile(blob: Blob): void {
+    const url = URL.createObjectURL(blob);
+    const link = this.document.createElement('a');
+    try {
+      link.href = url;
+      link.download = 'planner.xlsx';
+      this.document.body.appendChild(link);
+      link.click();
+    } finally {
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+    }
   }
 
   loadPlannerData(): void {

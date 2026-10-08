@@ -1,0 +1,67 @@
+<div
+  *ngIf="opened"
+  class="planner-modal-backdrop"
+  (click)="closeOnBackdrop($event)"
+  (keydown.escape)="close()">
+  <section class="planner-modal" role="dialog" aria-modal="true" aria-labelledby="planner-export-title">
+    <header class="planner-modal-header">
+      <div>
+        <p class="planner-modal-eyebrow">Planner</p>
+        <h2 id="planner-export-title">Exportar para Excel</h2>
+      </div>
+      <button type="button" class="planner-modal-close" aria-label="Fechar" [disabled]="exporting" (click)="close()">×</button>
+    </header>
+
+    <form #exportForm="ngForm" (ngSubmit)="submit()" [attr.aria-busy]="exporting">
+      <fieldset class="planner-modal-fields border-0 p-0" [disabled]="exporting">
+        <legend class="visually-hidden">Opções de exportação</legend>
+        <label class="planner-form-field">
+          <span>Exportar por</span>
+          <select class="form-select" name="mode" [(ngModel)]="mode">
+            <option value="COUNT">Quantidade de dias</option>
+            <option value="PERIOD">Período</option>
+            <option value="QUARTER">Quarter completo</option>
+            <option value="SPRINT">Sprint completa</option>
+          </select>
+        </label>
+
+        <ng-container *ngIf="mode === 'COUNT' || mode === 'PERIOD'">
+          <label class="planner-form-field">
+            <span>Data início</span>
+            <input type="date" class="form-control" name="startDate" [(ngModel)]="startDate" required>
+          </label>
+          <label *ngIf="mode === 'COUNT'" class="planner-form-field">
+            <span>Quantidade de dias</span>
+            <input type="number" class="form-control" name="count" [(ngModel)]="count" min="1" max="16383" step="1" required>
+          </label>
+          <label *ngIf="mode === 'PERIOD'" class="planner-form-field">
+            <span>Data fim</span>
+            <input type="date" class="form-control" name="endDate" [(ngModel)]="endDate" [min]="startDate" required>
+          </label>
+        </ng-container>
+
+        <label *ngIf="mode === 'QUARTER'" class="planner-form-field">
+          <span>Quarter</span>
+          <select class="form-select" name="quarterId" [(ngModel)]="quarterId" required>
+            <option value="" disabled>Selecione um Quarter</option>
+            <option *ngFor="let quarter of quarters" [value]="quarter.id">{{ quarter.description }}</option>
+          </select>
+        </label>
+        <label *ngIf="mode === 'SPRINT'" class="planner-form-field">
+          <span>Sprint</span>
+          <select class="form-select" name="sprintId" [(ngModel)]="sprintId" required>
+            <option value="" disabled>Selecione uma Sprint</option>
+            <option *ngFor="let sprint of sprints" [value]="sprint.id">{{ sprint.description }}</option>
+          </select>
+        </label>
+      </fieldset>
+      <p *ngIf="validationMessage" class="planner-modal-error" role="status">{{ validationMessage }}</p>
+      <footer class="planner-modal-footer">
+        <button type="button" class="btn btn-outline-secondary" [disabled]="exporting" (click)="close()">Cancelar</button>
+        <button type="submit" class="btn btn-primary" [disabled]="exporting || exportForm.invalid || !!validationMessage">
+          {{ exporting ? 'Exportando...' : 'Exportar' }}
+        </button>
+      </footer>
+    </form>
+  </section>
+</div>

@@ -1,7 +1,6 @@
 <main class="planner-page">
   <header class="row planner-heading text-center">
-    <p class="planner-eyebrow">Planejamento da squad</p>
-    <h1>Planner Squad Sustentação GEO</h1>
+    <h1>Planner - Squad Sustentação GEO</h1>
     <p class="planner-description">
       Organize e visualize o planejamento da sua squad
     </p>
@@ -13,6 +12,19 @@
     [maxDate]="days[days.length - 1] || ''"
     (selectionApplied)="applyDisplaySelection($event)">
   </app-planner-display-options>
+
+  <div class="planner-export-toolbar">
+    <button type="button" class="btn btn-outline-primary" (click)="openExportOptions()" [disabled]="exporting || !visibleDays.length">
+      {{ exporting ? 'Exportando...' : 'Exportar' }}
+    </button>
+  </div>
+
+  <app-planner-export-options
+    [quarters]="quarters"
+    [sprints]="sprints"
+    [exporting]="exporting"
+    (exportRequested)="exportPlanner($event)">
+  </app-planner-export-options>
 
   <nav class="planner-date-navigation" aria-label="Navegação do período">
     <button

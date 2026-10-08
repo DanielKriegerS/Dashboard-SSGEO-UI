@@ -15,7 +15,7 @@ export class PlannerDisplayOptions implements OnChanges {
   @Input() maxDate = '';
   @Output() selectionApplied = new EventEmitter<PlannerDisplaySelection>();
 
-  collapsed = false;
+  collapsed = true;
   displayType: PlannerDisplaySelection['type'] = 'count';
   count = 15;
   startDate = '';

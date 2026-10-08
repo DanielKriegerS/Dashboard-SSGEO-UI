@@ -41,6 +41,12 @@
   background: #fff;
 }
 
+.planner-export-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.75rem;
+}
+
 .planner-navigation-button {
   display: grid;
   width: 42px;

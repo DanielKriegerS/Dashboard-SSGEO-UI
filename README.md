@@ -26,6 +26,21 @@ For a complete list of available schematics (such as `components`, `directives`,
 ng generate --help
 ```
 
+## Planner Excel export
+
+The **Exportar** button above the planner opens export options for a day count,
+a date period, a complete Quarter, or a complete Sprint. Count and period are
+initially populated from the current planner window, including arrow navigation.
+Changing export options does not change the planner display.
+
+The frontend downloads `planner.xlsx` from `GET /planner/export` on the configured
+backend. It sends only the parameters for the chosen mode: `COUNT` with
+`startDate` and `count`, `PERIOD` with `startDate` and `endDate`, `QUARTER` with
+`quarterId`, or `SPRINT` with `sprintId`. Dates use `yyyy-MM-dd`. The workbook
+content, formatting and date clipping are determined by the backend. Count and
+period exports support up to 16,383 days; server errors are shown through the
+existing feedback component.
+
 ## Building
 
 To build the project run:
