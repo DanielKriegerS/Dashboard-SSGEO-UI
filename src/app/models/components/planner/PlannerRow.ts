@@ -5,7 +5,6 @@ export interface PlannerRow {
   coatendDescription: string;
   cells: PlannerCell[];
   isPlaceholder?: boolean;
-  activityPlaceholderDate?: string;
   sprintId?: string | null;
   quarterId?: string | null;
 }

@@ -164,7 +164,7 @@
             </select>
           </label>
           <div class="planner-form-date-row">
-            <label *ngIf="showDeveloperField" class="planner-form-field">
+            <label class="planner-form-field">
               <span>Data início</span>
               <input
                 class="form-control"
@@ -184,7 +184,7 @@
                 required>
             </label>
           </div>
-          <label class="planner-form-field">
+          <label *ngIf="showDeveloperField" class="planner-form-field">
             <span>Desenvolvedor</span>
             <select
               class="form-select"
@@ -197,7 +197,11 @@
               </option>
             </select>
           </label>
-          <p *ngIf="developerLoadError" class="planner-modal-error" role="alert">
+          <label *ngIf="!showDeveloperField" class="planner-form-field">
+            <span>Executor</span>
+            <input class="form-control" [value]="fixedExecutor" disabled>
+          </label>
+          <p *ngIf="showDeveloperField && developerLoadError" class="planner-modal-error" role="alert">
             {{ developerLoadError }}
           </p>
         </ng-container>

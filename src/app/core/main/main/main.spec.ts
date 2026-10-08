@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { Main } from './main';
 import { Quarter } from '../../../services/quarter';
 import { SprintService } from '../../../services/sprint';
@@ -11,6 +11,8 @@ import { QuarterSummary } from '../../../models/quarter/QuarterSummary';
 import { SprintSummary } from '../../../models/sprint/SprintSummary';
 import { CoatendSummary } from '../../../models/coatend/CoatendSummary';
 import { CoatendPlannerModel } from '../../../models/components/planner/CoatendPlannerModel';
+import { Activity } from '../../../models/components/Activities';
+import { FeedbackService } from '../../../services/feedback';
 
 describe('Main', () => {
   let component: Main;
@@ -43,6 +45,72 @@ describe('Main', () => {
   it('should create', () => {
     expect(component).toBeTruthy();
   });
+
+  it('should report an activity update failure as editing, not creation', () => {
+    vi.spyOn(TestBed.inject(TimelineMutationService), 'update')
+      .mockReturnValue(throwError(() => new Error('API failed')));
+    const feedback = vi.spyOn(TestBed.inject(FeedbackService), 'error');
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    try {
+      component.createPlannerItem({
+        type: 'activity', activityId: 'activity-1', coatendId: 'coatend-1',
+        activity: Activity.SWAP, startDate: '2026-10-08', endDate: '2026-10-09'
+      });
+
+      expect(feedback).toHaveBeenCalledWith('Não foi possível atualizar atividade. Tente novamente.');
+      expect(log).toHaveBeenCalledWith('Erro ao atualizar atividade pelo planner:', expect.any(Error));
+    } finally {
+      log.mockRestore();
+    }
+  });
+
+  it.each([
+    Activity.HOMOLOGATION,
+    Activity.ADMINISTRATIVE_TASKS,
+    Activity.PRE_SWAP,
+    Activity.SWAP
+  ])('should create and edit %s with a null developer', activity => {
+    const create = vi.fn().mockReturnValue(of({}));
+    Object.assign(TestBed.inject(TimelineService), { create });
+    const update = vi.spyOn(TestBed.inject(TimelineMutationService), 'update');
+    const item = {
+      type: 'activity' as const,
+      coatendId: 'coatend-1',
+      activity,
+      developerId: 'stale-developer',
+      startDate: '2026-10-08',
+      endDate: '2026-10-09'
+    };
+    component.createPlannerItem(item);
+    component.createPlannerItem({ ...item, activityId: 'activity-1' });
+
+    const expectedPayload = {
+      activity,
+      startDate: item.startDate,
+      endDate: item.endDate,
+      developerId: null
+    };
+    expect(create).toHaveBeenCalledWith('coatend-1', expectedPayload);
+    expect(update).toHaveBeenCalledWith('activity-1', expectedPayload);
+  });
+
+  it.each([Activity.DEVELOPMENT, Activity.TESTING_TU, Activity.PASSAGE_TH])(
+    'should reject creation and editing of %s without a developer',
+    activity => {
+      const create = vi.fn();
+      Object.assign(TestBed.inject(TimelineService), { create });
+      const update = vi.spyOn(TestBed.inject(TimelineMutationService), 'update');
+      const item = {
+        type: 'activity' as const, coatendId: 'coatend-1', activity,
+        startDate: '2026-10-08', endDate: '2026-10-09'
+      };
+      component.createPlannerItem(item);
+      component.createPlannerItem({ ...item, activityId: 'activity-1' });
+      expect(create).not.toHaveBeenCalled();
+      expect(update).not.toHaveBeenCalled();
+    }
+  );
 
   it('should select empty mode when no planner structures exist', () => {
     expect(component.resolvePlannerMode([], [], [], [])).toBe('empty');

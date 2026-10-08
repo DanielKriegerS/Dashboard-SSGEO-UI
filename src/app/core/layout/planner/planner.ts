@@ -45,6 +45,23 @@ export class Planner {
     this.placeholderActions?.open(request);
   }
 
+  openActivityCreation(date: string, coatendId: string | null): void {
+    this.openPlaceholder({
+      type: 'activity',
+      coatendId: coatendId ?? undefined,
+      startDate: date
+    });
+  }
+
+  onActivityCellKeydown(event: KeyboardEvent, date: string, coatendId: string | null): void {
+    if (event.target !== event.currentTarget || (event.key !== 'Enter' && event.key !== ' ')) {
+      return;
+    }
+
+    event.preventDefault();
+    this.openActivityCreation(date, coatendId);
+  }
+
   openStructureEditor(type: 'quarter' | 'sprint' | 'coatend', id: string): void {
     const item = type === 'quarter'
       ? this.quarters.find(quarter => quarter.id === id)

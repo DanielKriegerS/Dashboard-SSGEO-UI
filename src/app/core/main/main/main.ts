@@ -28,6 +28,7 @@ import { FeedbackService } from '../../../services/feedback';
 import { TimelineService as TimelineMutationService } from '../../../services/timeline';
 import { PlannerDisplayOptions } from '../../layout/planner-display-options/planner-display-options';
 import { PlannerDisplaySelection } from '../../../models/components/planner/PlannerDisplaySelection';
+import { requiresActivityDeveloper } from '../../../models/components/Activities';
 
 @Component({
   selector: 'app-main',
@@ -349,7 +350,7 @@ export class Main implements OnInit{
     if (
       !item.coatendId ||
       !item.activity ||
-      !item.developerId ||
+      (requiresActivityDeveloper(item.activity) && !item.developerId) ||
       !this.hasValidDateRange(item.startDate, item.endDate)
     ) {
       this.feedback.warning('Informe a atividade, o desenvolvedor e um período válido.');
@@ -360,7 +361,7 @@ export class Main implements OnInit{
       activity: item.activity,
       startDate: item.startDate!,
       endDate: item.endDate!,
-      developerId: item.developerId
+      developerId: requiresActivityDeveloper(item.activity) ? item.developerId : null
     };
 
     this.timelineService.create(item.coatendId, payload).subscribe({
@@ -374,6 +375,7 @@ export class Main implements OnInit{
       !item.activityId ||
       !item.coatendId ||
       !item.activity ||
+      (requiresActivityDeveloper(item.activity) && !item.developerId) ||
       !this.hasValidDateRange(item.startDate, item.endDate)
     ) {
       this.feedback.warning('Informe a atividade e um período válido.');
@@ -384,12 +386,12 @@ export class Main implements OnInit{
       activity: item.activity,
       startDate: item.startDate!,
       endDate: item.endDate!,
-      developerId: item.developerId || null
+      developerId: requiresActivityDeveloper(item.activity) ? item.developerId : null
     };
 
     this.timelineMutationService.update(item.activityId, payload).subscribe({
       next: () => this.onPlannerItemSaved('Atividade atualizada com sucesso!'),
-      error: error => this.onPlannerItemSaveFailed('atividade', error)
+      error: error => this.onPlannerItemSaveFailed('atividade', error, 'atualizar')
     });
   }
 
@@ -402,9 +404,13 @@ export class Main implements OnInit{
     this.loadPlannerData();
   }
 
-  private onPlannerItemSaveFailed(itemName: string, error: unknown): void {
-    console.error(`Erro ao criar ${itemName} pelo planner:`, error);
-    this.feedback.error(`Não foi possível criar ${itemName}. Tente novamente.`);
+  private onPlannerItemSaveFailed(
+    itemName: string,
+    error: unknown,
+    action: 'criar' | 'atualizar' = 'criar'
+  ): void {
+    console.error(`Erro ao ${action} ${itemName} pelo planner:`, error);
+    this.feedback.error(`Não foi possível ${action} ${itemName}. Tente novamente.`);
   }
 
   resolvePlannerMode(
@@ -466,14 +472,6 @@ export class Main implements OnInit{
       this.coatends,
       this.visibleDays
     );
-    const activityPlaceholderDates = this.getNextEmptyActivityDates();
-    this.plannerData.forEach(row => {
-      if (row.coatendId) {
-        row.activityPlaceholderDate = activityPlaceholderDates.get(
-          this.normalizeId(row.coatendId)
-        );
-      }
-    });
 
     this.plannerHierarchy = this.buildPlannerHierarchy(
       this.plannerData,
@@ -617,12 +615,6 @@ export class Main implements OnInit{
 
   buildPlaceholderHierarchy(days: string[]): PlannerQuarterGroup[] {
     const rows = this.buildPlannerData(this.timeline, this.coatendSummaries, days);
-    const activityPlaceholderDates = this.getNextEmptyActivityDates();
-    rows.forEach(row => {
-      if (row.coatendId) {
-        row.activityPlaceholderDate = activityPlaceholderDates.get(this.normalizeId(row.coatendId));
-      }
-    });
     this.plannerData = rows;
 
     const row: PlannerRow = {
@@ -764,38 +756,6 @@ export class Main implements OnInit{
         this.displaySelection = { type: 'period', startDate, endDate };
       }
     }
-  }
-
-  private getNextEmptyActivityDates(): Map<string, string> {
-    const result = new Map<string, string>();
-
-    for (const coatend of this.coatendSummaries) {
-      const coatendId = this.normalizeId(coatend.id);
-      const occupiedDates = new Set<string>();
-
-      for (const activity of this.timeline) {
-        if (this.normalizeId(activity.coatendId) !== coatendId) {
-          continue;
-        }
-
-        const startKey = this.toDateKey(activity.startDate);
-        const endKey = this.toDateKey(activity.endDate);
-
-        for (const day of this.days) {
-          const dayKey = this.toDateKey(day);
-          if (dayKey >= startKey && dayKey <= endKey) {
-            occupiedDates.add(day);
-          }
-        }
-      }
-
-      const nextEmptyDate = this.days.find(day => !occupiedDates.has(day));
-      if (nextEmptyDate) {
-        result.set(coatendId, nextEmptyDate);
-      }
-    }
-
-    return result;
   }
 
   buildPlannerHierarchy(

@@ -4,6 +4,7 @@ import { of } from 'rxjs';
 import { PlannerPlaceholderActions } from './planner-placeholder-actions';
 import { DeveloperService } from '../../../services/developer-service';
 import { QuarterSummary } from '../../../models/quarter/QuarterSummary';
+import { Activity } from '../../../models/components/Activities';
 
 describe('PlannerPlaceholderActions', () => {
   let component: PlannerPlaceholderActions;
@@ -25,6 +26,40 @@ describe('PlannerPlaceholderActions', () => {
   it('should create', () => {
     expect(component).toBeTruthy();
   });
+
+  it.each([
+    [Activity.HOMOLOGATION, 'Homologação'],
+    [Activity.ADMINISTRATIVE_TASKS, 'Administrativo'],
+    [Activity.PRE_SWAP, 'Equipe Swap'],
+    [Activity.SWAP, 'Equipe Swap']
+  ])('should show the predefined executor for %s when creating or editing', async (activity, executor) => {
+    for (const activityId of [undefined, 'activity-1']) {
+      component.open({ type: 'activity', activityId, coatendId: 'coatend-1' });
+      component.developerId = 'developer-1';
+      component.onActivityChange(activity);
+      fixture.changeDetectorRef.markForCheck();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(component.developerRequired).toBe(false);
+      expect(component.developerId).toBe('');
+      expect(component.fixedExecutor).toBe(executor);
+      expect(fixture.nativeElement.querySelector('[name="developerId"]')).toBeNull();
+      expect(fixture.nativeElement.querySelector('[name="startDate"]')).not.toBeNull();
+      expect(fixture.nativeElement.querySelector('[name="endDate"]')).not.toBeNull();
+      expect(fixture.nativeElement.querySelector('input[disabled]').value).toBe(executor);
+    }
+  });
+
+  it.each([Activity.DEVELOPMENT, Activity.TESTING_TU, Activity.PASSAGE_TH])(
+    'should require a developer for %s',
+    activity => {
+      component.open({ type: 'activity', coatendId: 'coatend-1' });
+      component.onActivityChange(activity);
+      expect(component.developerRequired).toBe(true);
+      expect(component.showDeveloperField).toBe(true);
+    }
+  );
 
   it('should flag a quarter date range that overlaps an existing quarter', () => {
     const quarter: QuarterSummary = {

@@ -103,19 +103,15 @@
                   </button>
                 </ng-template>
               </td>
-              <td *ngFor="let cell of row.cells" class="planner-day-cell">
+              <td
+                *ngFor="let cell of row.cells"
+                class="planner-day-cell planner-add-activity-cell"
+                tabindex="0"
+                [attr.aria-label]="'Adicionar atividade em ' + (cell.date | date:'dd/MM/yyyy')"
+                title="Clique no espaço da célula para adicionar uma atividade"
+                (click)="openActivityCreation(cell.date, row.coatendId)"
+                (keydown)="onActivityCellKeydown($event, cell.date, row.coatendId)">
                 <div class="planner-cell-content">
-                  <span
-                    *ngIf="row.isPlaceholder ? cell === row.cells[0] : cell.date === row.activityPlaceholderDate">
-                    <button
-                      type="button"
-                      class="planner-add-placeholder"
-                      aria-label="Adicionar Atividade"
-                      title="Adicionar Atividade"
-                      (click)="openPlaceholder({ type: 'activity', coatendId: row.coatendId ?? undefined })">
-                      +
-                    </button>
-                  </span>
                   <button
                     *ngFor="let entry of cell.entries"
                     type="button"
@@ -124,7 +120,7 @@
                     [style.color]="getTextColor(entry.performerColor)"
                     [title]="'Editar atividade: ' + entry.activity"
                     [attr.aria-label]="'Editar atividade: ' + entry.activity"
-                    (click)="openActivityEditor(entry, row.coatendId)">
+                    (click)="$event.stopPropagation(); openActivityEditor(entry, row.coatendId)">
                     {{ getShortActivity(entry.activity) }}
                   </button>
                 </div>
@@ -141,7 +137,15 @@
                   +
                 </button>
               </td>
-              <td *ngFor="let day of days" class="planner-day-cell"></td>
+              <td
+                *ngFor="let day of days"
+                class="planner-day-cell planner-add-activity-cell"
+                tabindex="0"
+                [attr.aria-label]="'Adicionar atividade em ' + (day | date:'dd/MM/yyyy')"
+                title="Adicionar atividade"
+                (click)="openActivityCreation(day, null)"
+                (keydown)="onActivityCellKeydown($event, day, null)">
+              </td>
             </tr>
           </ng-container>
         </ng-container>

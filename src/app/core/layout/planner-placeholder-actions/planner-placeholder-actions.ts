@@ -10,7 +10,11 @@ import { QuarterSummary } from '../../../models/quarter/QuarterSummary';
 import { SprintSummary } from '../../../models/sprint/SprintSummary';
 import { CoatendSummary } from '../../../models/coatend/CoatendSummary';
 import { DeveloperModel } from '../../../models/developer/DeveloperModel';
-import { Activity } from '../../../models/components/Activities';
+import {
+  Activity,
+  getActivityFixedExecutor,
+  requiresActivityDeveloper
+} from '../../../models/components/Activities';
 import { DeveloperService } from '../../../services/developer-service';
 
 @Component({
@@ -62,17 +66,15 @@ export class PlannerPlaceholderActions {
   }
 
   get developerRequired(): boolean {
-    if (!this.isEditingActivity) {
-      return true;
-    }
-
-    return this.activity === Activity.DEVELOPMENT ||
-      this.activity === Activity.TESTING_TU ||
-      this.activity === Activity.PASSAGE_TH;
+    return requiresActivityDeveloper(this.activity);
   }
 
   get showDeveloperField(): boolean {
-    return !this.isEditingActivity || this.developerRequired;
+    return this.developerRequired;
+  }
+
+  get fixedExecutor(): string {
+    return getActivityFixedExecutor(this.activity);
   }
 
   get itemName(): string {
@@ -128,7 +130,7 @@ export class PlannerPlaceholderActions {
       (this.coatends.length === 1 ? this.coatends[0].id : '');
     this.activity = this.activities.find(activity => activity === request.activity) ??
       Activity.DEVELOPMENT;
-    this.developerId = request.developerId ?? '';
+    this.developerId = this.developerRequired ? request.developerId ?? '' : '';
     this.developerLoadError = '';
 
     if (request.type === 'activity') {
@@ -154,7 +156,7 @@ export class PlannerPlaceholderActions {
 
     this.activity = selectedActivity;
 
-    if (this.isEditingActivity && !this.developerRequired) {
+    if (!this.developerRequired) {
       this.developerId = '';
     }
   }
@@ -192,7 +194,9 @@ export class PlannerPlaceholderActions {
         submission.activity = this.activity;
         submission.startDate = this.startDate;
         submission.endDate = this.endDate;
-        submission.developerId = this.developerId || undefined;
+        submission.developerId = this.developerRequired
+          ? this.developerId || undefined
+          : undefined;
         submission.coatendId = this.coatendId;
         break;
     }
