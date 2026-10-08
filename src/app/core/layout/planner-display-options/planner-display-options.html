@@ -1,0 +1,85 @@
+<section class="display-panel" aria-label="Opções de exibição dos dias">
+  <button
+    type="button"
+    class="display-panel-toggle"
+    [attr.aria-expanded]="!collapsed"
+    aria-controls="planner-display-fields"
+    (click)="collapsed = !collapsed">
+    <span class="display-panel-heading">
+      <strong>Exibição dos dias</strong>
+      <span class="display-panel-summary">
+        <ng-container *ngIf="selection.type === 'count'">
+          {{ selection.count }} dias por página
+        </ng-container>
+        <ng-container *ngIf="selection.type === 'period'">
+          {{ selection.startDate | date:'dd/MM/yyyy' }} até
+          {{ selection.endDate | date:'dd/MM/yyyy' }}
+        </ng-container>
+      </span>
+    </span>
+    <span class="display-toggle-icon" [class.expanded]="!collapsed" aria-hidden="true"></span>
+  </button>
+
+  <div id="planner-display-fields" class="display-panel-body" [hidden]="collapsed">
+    <form #displayForm="ngForm" (ngSubmit)="apply()">
+      <fieldset class="display-mode-options">
+        <legend class="visually-hidden">Escolha como exibir os dias</legend>
+        <label>
+          <input type="radio" name="displayType" value="count" [(ngModel)]="displayType">
+          Quantidade de dias
+        </label>
+        <label>
+          <input type="radio" name="displayType" value="period" [(ngModel)]="displayType">
+          Período
+        </label>
+      </fieldset>
+
+      <div class="display-fields">
+        <label *ngIf="displayType === 'count'" class="display-field">
+          <span>Dias exibidos</span>
+          <input
+            type="number"
+            name="count"
+            class="form-control"
+            [(ngModel)]="count"
+            min="1"
+            step="1"
+            required>
+        </label>
+        <ng-container *ngIf="displayType === 'period'">
+          <label class="display-field">
+            <span>Data início</span>
+            <input
+              type="date"
+              name="startDate"
+              class="form-control"
+              [(ngModel)]="startDate"
+              [min]="minDate"
+              [max]="maxDate"
+              required>
+          </label>
+          <label class="display-field">
+            <span>Data fim</span>
+            <input
+              type="date"
+              name="endDate"
+              class="form-control"
+              [(ngModel)]="endDate"
+              [min]="startDate || minDate"
+              [max]="maxDate"
+              required>
+          </label>
+        </ng-container>
+        <button
+          type="submit"
+          class="btn btn-primary"
+          [disabled]="displayForm.invalid || !!validationMessage || !minDate || !maxDate">
+          Aplicar
+        </button>
+      </div>
+      <p *ngIf="validationMessage" class="display-validation" role="status">
+        {{ validationMessage }}
+      </p>
+    </form>
+  </div>
+</section>

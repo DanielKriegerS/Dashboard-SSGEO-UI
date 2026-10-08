@@ -1,3 +1,75 @@
-.dates {
-    font-weight: bolder;
+.planner-page {
+  width: 100%;
+  max-width: 1800px;
+  margin: 0 auto;
+}
+
+.planner-heading {
+  margin-bottom: 1.5rem;
+}
+
+.planner-eyebrow {
+  margin-bottom: 0.35rem;
+  color: #536579;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.planner-heading h1 {
+  margin: 0;
+  color: #1f2937;
+  font-size: clamp(1.5rem, 2.5vw, 2rem);
+  font-weight: 700;
+}
+
+.planner-description {
+  margin: 0.5rem 0 0;
+  color: #64748b;
+}
+
+.planner-date-navigation {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 42px;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #fff;
+}
+
+.planner-navigation-button {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  padding: 0;
+  font-size: 1.25rem;
+}
+
+.planner-date-range {
+  color: #475569;
+  text-align: center;
+}
+
+.planner-date-range strong {
+  color: #1e293b;
+}
+
+@media (max-width: 575.98px) {
+  .planner-heading {
+    margin-bottom: 1rem;
+  }
+
+  .planner-date-navigation {
+    gap: 0.5rem;
+    padding: 0.5rem;
+  }
+
+  .planner-date-range {
+    font-size: 0.875rem;
+  }
 }

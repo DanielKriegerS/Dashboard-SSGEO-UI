@@ -1,22 +1,86 @@
-import { Component, Input } from '@angular/core';
+import { Component, EventEmitter, Input, Output, ViewChild } from '@angular/core';
 import { PlannerRow } from '../../../models/components/planner/PlannerRow';
 import { CommonModule } from '@angular/common';
 import { PlannerQuarterGroup } from '../../../models/components/planner/PlannerQuarterGroup';
 import { PlannerHeader } from '../../../models/components/planner/PlannerHeader';
+import { PlannerPlaceholderActions } from "../planner-placeholder-actions/planner-placeholder-actions";
+import { PlannerMode } from '../../../models/components/planner/PlannerMode';
+import { QuarterSummary } from '../../../models/quarter/QuarterSummary';
+import { SprintSummary } from '../../../models/sprint/SprintSummary';
+import { CoatendSummary } from '../../../models/coatend/CoatendSummary';
+import {
+  PlannerPlaceholderRequest,
+  PlannerPlaceholderSubmission,
+  PlannerPlaceholderType
+} from '../../../models/components/planner/PlannerPlaceholderSubmission';
+import { PlannerEntries } from '../../../models/components/planner/PlannerEntries';
 
 @Component({
   selector: 'app-planner',
-  imports: [CommonModule],
+  imports: [CommonModule, PlannerPlaceholderActions],
   templateUrl: './planner.html',
   styleUrl: './planner.scss',
 })
 export class Planner {
+
+  @ViewChild('placeholderActions') placeholderActions?: PlannerPlaceholderActions;
+  @Output() placeholderSubmitted = new EventEmitter<PlannerPlaceholderSubmission>();
   
   @Input() hierarchy: PlannerQuarterGroup[] = [];
   @Input() days: string[] = [];
 
   @Input() quarterHeaders: PlannerHeader[] = [];
   @Input() sprintHeaders: PlannerHeader[] = [];
+  @Input() mode: PlannerMode = 'empty';
+  @Input() hasCompleteStructure = false;
+  @Input() quarters: QuarterSummary[] = [];
+  @Input() sprints: SprintSummary[] = [];
+  @Input() coatends: CoatendSummary[] = [];
+
+  isPlaceholderHeader(header: PlannerHeader, type: PlannerPlaceholderType): boolean {
+    return header.id.toLowerCase().startsWith(`placeholder-${type}`);
+  }
+
+  openPlaceholder(request: PlannerPlaceholderRequest): void {
+    this.placeholderActions?.open(request);
+  }
+
+  openStructureEditor(type: 'quarter' | 'sprint' | 'coatend', id: string): void {
+    const item = type === 'quarter'
+      ? this.quarters.find(quarter => quarter.id === id)
+      : type === 'sprint'
+        ? this.sprints.find(sprint => sprint.id === id)
+        : this.coatends.find(coatend => coatend.id === id);
+
+    if (!item) {
+      console.error(`Item do planner não encontrado para edição: ${type}, ${id}`);
+      return;
+    }
+
+    this.openPlaceholder({
+      type,
+      entityId: item.id,
+      description: item.description,
+      ...('startDate' in item ? { startDate: item.startDate, endDate: item.endDate } : {}),
+      ...('coatendNumber' in item ? { coatendNumber: item.coatendNumber } : {})
+    });
+  }
+
+  openActivityEditor(entry: PlannerEntries, coatendId: string | null): void {
+    if (!coatendId) {
+      return;
+    }
+
+    this.placeholderActions?.open({
+      type: 'activity',
+      activityId: entry.id,
+      activity: entry.activity,
+      startDate: entry.startDate,
+      endDate: entry.endDate,
+      developerId: entry.developerId,
+      coatendId
+    });
+  }
 
   getShortActivity(activity?: string) {
     if (!activity) return '';

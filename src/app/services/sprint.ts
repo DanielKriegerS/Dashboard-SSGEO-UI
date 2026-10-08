@@ -23,8 +23,8 @@ export class SprintService {
     return this.http.get<SprintCompleteModel>(`${this.baseUrl}/${id}`);
   }
 
-  create(sprint: SprintCreateModel) {
-    return this.http.post(`${API_URL}/sprints`, sprint);
+  create(sprint: SprintCreateModel): Observable<SprintSummary> {
+    return this.http.post<SprintSummary>(this.baseUrl, sprint);
   }
 
   updateSprintQuarter(sprintId: string, payload: SprintMoveModel) {

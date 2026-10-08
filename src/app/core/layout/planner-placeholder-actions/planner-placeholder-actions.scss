@@ -1,0 +1,141 @@
+.planner-partial-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid #f2d28a;
+  border-radius: 0.75rem;
+  color: #704d00;
+  background: #fff8e6;
+}
+
+.planner-notice-icon {
+  display: grid;
+  width: 1.5rem;
+  height: 1.5rem;
+  flex: 0 0 1.5rem;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: #b7791f;
+  font-weight: 700;
+}
+
+.planner-partial-notice strong {
+  display: block;
+  margin-bottom: 0.15rem;
+}
+
+.planner-modal-backdrop {
+  position: fixed;
+  z-index: 1100;
+  inset: 0;
+  display: grid;
+  overflow-y: auto;
+  place-items: center;
+  padding: 1rem;
+  background: rgb(15 23 42 / 55%);
+}
+
+.planner-modal {
+  width: min(100%, 560px);
+  max-height: min(90vh, 760px);
+  overflow-y: auto;
+  padding: 1.25rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  background: #fff;
+  box-shadow: 0 24px 64px rgb(15 23 42 / 25%);
+}
+
+.planner-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.planner-modal-header h2 {
+  margin: 0;
+  color: #1e293b;
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.planner-modal-eyebrow {
+  margin: 0 0 0.25rem;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.planner-modal-close {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 0.5rem;
+  color: #64748b;
+  background: transparent;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.planner-modal-close:hover {
+  color: #1e293b;
+  background: #f1f5f9;
+}
+
+.planner-modal-fields {
+  display: grid;
+  gap: 1rem;
+}
+
+.planner-form-field {
+  display: grid;
+  min-width: 0;
+  gap: 0.4rem;
+  color: #334155;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.planner-form-date-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.planner-modal-hint,
+.planner-modal-error {
+  margin: 1rem 0 0;
+  color: #9a6700;
+  font-size: 0.875rem;
+}
+
+.planner-modal-error {
+  color: #b42318;
+}
+
+.planner-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+@media (max-width: 480px) {
+  .planner-modal {
+    padding: 1rem;
+  }
+
+  .planner-form-date-row {
+    grid-template-columns: 1fr;
+  }
+}

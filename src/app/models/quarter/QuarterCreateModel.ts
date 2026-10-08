@@ -1,5 +1,5 @@
 export interface QuarterCreateModel {
-    id: string;
+    id?: string;
     description: string;
     startDate: string;
     endDate: string;

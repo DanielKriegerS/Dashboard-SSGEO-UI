@@ -1,79 +1,151 @@
-<div class="table-responsive">
+<section class="planner-layout" aria-label="Quadro do planner">
+  <app-planner-placeholder-actions
+    #placeholderActions
+    [mode]="mode"
+    [hasCompleteStructure]="hasCompleteStructure"
+    [quarters]="quarters"
+    [sprints]="sprints"
+    [coatends]="coatends"
+    (submitted)="placeholderSubmitted.emit($event)">
+  </app-planner-placeholder-actions>
 
-  <table class="table table-bordered text-center planner-table">
-
-    <thead>
-
-      <tr>
-        <th rowspan="3" class="align-middle planner-fixed-column">
-          Planner
-        </th>
-
-        <th
-          *ngFor="let q of quarterHeaders"
-          [attr.colspan]="q.colspan"
-          class="table-dark">
-          {{ q.description || '-' }}
-        </th>
-      </tr>
-
-      <!-- HEADER SPRINTS -->
-      <tr>
-        <th
-          *ngFor="let s of sprintHeaders"
-          [attr.colspan]="s.colspan"
-          class="table-secondary">
-          {{ s.description || '-' }}
-        </th>
-      </tr>
-
-      <!-- HEADER DIAS -->
-      <tr>
-        <th *ngFor="let day of days">
-          {{ day | date:'dd/MM' }}
-        </th>
-      </tr>
-
-    </thead>
-
-    <tbody>
-
-      <ng-container *ngFor="let q of hierarchy">
-
-        <ng-container *ngFor="let s of q.sprints">
-
-          <tr *ngFor="let row of s.coatends">
-
-            <td class="text-start planner-fixed-column">
-              {{ row.coatendDescription }}
-            </td>
-
-            <td *ngFor="let cell of row.cells">
-
-              <div class="d-flex flex-column" style="gap:2px">
-
-                <span
-                  *ngFor="let entry of cell.entries"
-                  class="px-1 rounded planner-entry"  
-                  [style.background-color]="safeColor(entry.performerColor)"
-                  [style.color]="getTextColor(entry.performerColor)"
-                  [title]="entry.performerName"
-                >
-                  {{ getShortActivity(entry.activity) }}
-                </span>
-
-              </div>
-
-            </td>
-
-          </tr>
-
+  <div class="planner-table-container" role="region" aria-label="Tabela do planner" tabindex="0">
+    <table class="table table-bordered text-center planner-table">
+      <thead>
+        <tr>
+          <th rowspan="3" scope="col" class="align-middle planner-fixed-column">
+            Planner
+          </th>
+          <th
+            *ngFor="let q of quarterHeaders"
+            [attr.colspan]="q.colspan"
+            scope="colgroup"
+            class="planner-quarter-header">
+            <button
+              *ngIf="isPlaceholderHeader(q, 'quarter'); else quarterLabel"
+              type="button"
+              class="planner-add-placeholder"
+              aria-label="Adicionar Quarter"
+              title="Adicionar Quarter"
+              (click)="openPlaceholder({ type: 'quarter' })">
+              +
+            </button>
+            <ng-template #quarterLabel>
+              <button
+                *ngIf="q.id !== '__empty__'; else emptyQuarter"
+                type="button"
+                class="planner-edit-label"
+                title="Editar Quarter"
+                (click)="openStructureEditor('quarter', q.id)">
+                {{ q.description }}
+              </button>
+              <ng-template #emptyQuarter>-</ng-template>
+            </ng-template>
+          </th>
+        </tr>
+        <tr>
+          <th
+            *ngFor="let s of sprintHeaders"
+            [attr.colspan]="s.colspan"
+            scope="colgroup"
+            class="planner-sprint-header">
+            <button
+              *ngIf="isPlaceholderHeader(s, 'sprint'); else sprintLabel"
+              type="button"
+              class="planner-add-placeholder"
+              aria-label="Adicionar Sprint"
+              title="Adicionar Sprint"
+              (click)="openPlaceholder({ type: 'sprint' })">
+              +
+            </button>
+            <ng-template #sprintLabel>
+              <button
+                *ngIf="s.id !== '__empty__'; else emptySprint"
+                type="button"
+                class="planner-edit-label"
+                title="Editar Sprint"
+                (click)="openStructureEditor('sprint', s.id)">
+                {{ s.description }}
+              </button>
+              <ng-template #emptySprint>-</ng-template>
+            </ng-template>
+          </th>
+        </tr>
+        <tr>
+          <th *ngFor="let day of days" scope="col" class="planner-day-header">
+            {{ day | date:'dd/MM' }}
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <ng-container *ngFor="let q of hierarchy">
+          <ng-container *ngFor="let s of q.sprints">
+            <tr
+              *ngFor="let row of s.coatends"
+              [class.planner-placeholder-row]="row.isPlaceholder">
+              <td class="text-start planner-fixed-column planner-coatend-cell">
+                <button
+                  *ngIf="row.isPlaceholder; else coatendLabel"
+                  type="button"
+                  class="planner-add-placeholder"
+                  aria-label="Adicionar Coatend"
+                  title="Adicionar Coatend"
+                  (click)="openPlaceholder({ type: 'coatend' })">
+                  +
+                </button>
+                <ng-template #coatendLabel>
+                  <button
+                    type="button"
+                    class="planner-edit-label"
+                    title="Editar Coatend"
+                    (click)="openStructureEditor('coatend', row.coatendId!)">
+                    {{ row.coatendDescription }}
+                  </button>
+                </ng-template>
+              </td>
+              <td *ngFor="let cell of row.cells" class="planner-day-cell">
+                <div class="planner-cell-content">
+                  <span
+                    *ngIf="row.isPlaceholder ? cell === row.cells[0] : cell.date === row.activityPlaceholderDate">
+                    <button
+                      type="button"
+                      class="planner-add-placeholder"
+                      aria-label="Adicionar Atividade"
+                      title="Adicionar Atividade"
+                      (click)="openPlaceholder({ type: 'activity', coatendId: row.coatendId ?? undefined })">
+                      +
+                    </button>
+                  </span>
+                  <button
+                    *ngFor="let entry of cell.entries"
+                    type="button"
+                    class="px-1 rounded planner-entry"
+                    [style.background-color]="safeColor(entry.performerColor)"
+                    [style.color]="getTextColor(entry.performerColor)"
+                    [title]="'Editar atividade: ' + entry.activity"
+                    [attr.aria-label]="'Editar atividade: ' + entry.activity"
+                    (click)="openActivityEditor(entry, row.coatendId)">
+                    {{ getShortActivity(entry.activity) }}
+                  </button>
+                </div>
+              </td>
+            </tr>
+            <tr *ngIf="mode === 'structured'" class="planner-placeholder-row">
+              <td class="text-start planner-fixed-column planner-coatend-cell">
+                <button
+                  type="button"
+                  class="planner-add-placeholder"
+                  aria-label="Adicionar Coatend nesta Sprint"
+                  title="Adicionar Coatend"
+                  (click)="openPlaceholder({ type: 'coatend', sprintId: s.sprintId })">
+                  +
+                </button>
+              </td>
+              <td *ngFor="let day of days" class="planner-day-cell"></td>
+            </tr>
+          </ng-container>
         </ng-container>
-
-      </ng-container>
-
-    </tbody>
-
-  </table>
-
-</div>
+      </tbody>
+    </table>
+  </div>
+</section>

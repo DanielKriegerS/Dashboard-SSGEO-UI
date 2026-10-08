@@ -1,0 +1,227 @@
+<div
+  *ngIf="mode === 'partial' && !hasCompleteStructure"
+  class="planner-partial-notice"
+  role="alert">
+  <span class="planner-notice-icon" aria-hidden="true">!</span>
+  <div>
+    <strong>Estrutura parcialmente configurada</strong>
+    <p class="mb-0">
+      Existem itens sem associação. Associe Quarter, Sprint e Coatend para
+      carregar o planner estruturado.
+    </p>
+  </div>
+</div>
+
+<div
+  *ngIf="request as currentRequest"
+  class="planner-modal-backdrop"
+  (click)="closeOnBackdrop($event)">
+  <section
+    class="planner-modal"
+    role="dialog"
+    aria-modal="true"
+    [attr.aria-label]="(isEditing ? 'Editar ' : 'Adicionar ') + itemName"
+    (click)="$event.stopPropagation()">
+    <header class="planner-modal-header">
+      <div>
+        <p class="planner-modal-eyebrow">Planner</p>
+        <h2>{{ (isEditing ? 'Editar ' : 'Adicionar ') + itemName }}</h2>
+      </div>
+      <button
+        type="button"
+        class="planner-modal-close"
+        aria-label="Fechar"
+        (click)="close()">
+        ×
+      </button>
+    </header>
+
+    <form #itemForm="ngForm" (ngSubmit)="submit()">
+      <div class="planner-modal-fields">
+        <ng-container *ngIf="currentRequest.type === 'quarter' || currentRequest.type === 'sprint'">
+          <label class="planner-form-field">
+            <span>Descrição</span>
+            <input
+              class="form-control"
+              type="text"
+              name="description"
+              [(ngModel)]="description"
+              required
+              maxlength="120">
+          </label>
+
+          <div class="planner-form-date-row">
+            <label class="planner-form-field">
+              <span>Data início</span>
+              <input
+                class="form-control"
+                type="date"
+                name="startDate"
+                [(ngModel)]="startDate"
+                required>
+            </label>
+            <label class="planner-form-field">
+              <span>Data fim</span>
+              <input
+                class="form-control"
+                type="date"
+                name="endDate"
+                [(ngModel)]="endDate"
+                [min]="startDate"
+                required>
+            </label>
+          </div>
+          <p
+            *ngIf="currentRequest.type === 'quarter' && quarterDateConflict"
+            class="planner-modal-error"
+            role="alert">
+            O período informado se sobrepõe ao período de outro Quarter.
+          </p>
+          <p
+            *ngIf="currentRequest.type === 'sprint' && sprintDateConflict"
+            class="planner-modal-error"
+            role="alert">
+            O período informado se sobrepõe ao período de outra Sprint.
+          </p>
+
+          <label *ngIf="currentRequest.type === 'sprint' && !isEditing" class="planner-form-field">
+            <span>Quarter</span>
+            <select
+              class="form-select"
+              name="quarterId"
+              [(ngModel)]="quarterId"
+              required>
+              <option value="" disabled>Selecione um Quarter</option>
+              <option *ngFor="let quarter of quarters" [value]="quarter.id">
+                {{ quarter.description }}
+              </option>
+            </select>
+          </label>
+        </ng-container>
+
+        <ng-container *ngIf="currentRequest.type === 'coatend'">
+          <label class="planner-form-field">
+            <span>Descrição</span>
+            <input
+              class="form-control"
+              type="text"
+              name="description"
+              [(ngModel)]="description"
+              required
+              maxlength="120">
+          </label>
+          <label class="planner-form-field">
+            <span>Número</span>
+            <input
+              class="form-control"
+              type="number"
+              name="coatendNumber"
+              [(ngModel)]="coatendNumber"
+              min="1"
+              step="1"
+              required>
+          </label>
+          <label *ngIf="!isEditing" class="planner-form-field">
+            <span>Sprint</span>
+            <select
+              class="form-select"
+              name="sprintId"
+              [(ngModel)]="sprintId"
+              required>
+              <option value="" disabled>Selecione uma Sprint</option>
+              <option *ngFor="let sprint of sprints" [value]="sprint.id">
+                {{ sprint.description }}
+              </option>
+            </select>
+          </label>
+        </ng-container>
+
+        <ng-container *ngIf="currentRequest.type === 'activity'">
+          <label *ngIf="!currentRequest.coatendId" class="planner-form-field">
+            <span>Coatend</span>
+            <select
+              class="form-select"
+              name="coatendId"
+              [(ngModel)]="coatendId"
+              required>
+              <option value="" disabled>Selecione uma Coatend</option>
+              <option *ngFor="let coatend of coatends" [value]="coatend.id">
+                {{ coatend.description }}
+              </option>
+            </select>
+          </label>
+          <label class="planner-form-field">
+            <span>Atividade</span>
+            <select
+              class="form-select"
+              name="activity"
+              [ngModel]="activity"
+              (ngModelChange)="onActivityChange($event)"
+              required>
+              <option *ngFor="let item of activities" [value]="item">
+                {{ activityLabels[item] }}
+              </option>
+            </select>
+          </label>
+          <div class="planner-form-date-row">
+            <label *ngIf="showDeveloperField" class="planner-form-field">
+              <span>Data início</span>
+              <input
+                class="form-control"
+                type="date"
+                name="startDate"
+                [(ngModel)]="startDate"
+                required>
+            </label>
+            <label class="planner-form-field">
+              <span>Data fim</span>
+              <input
+                class="form-control"
+                type="date"
+                name="endDate"
+                [(ngModel)]="endDate"
+                [min]="startDate"
+                required>
+            </label>
+          </div>
+          <label class="planner-form-field">
+            <span>Desenvolvedor</span>
+            <select
+              class="form-select"
+              name="developerId"
+              [(ngModel)]="developerId"
+              [required]="developerRequired">
+              <option value="" disabled>Selecione um desenvolvedor</option>
+              <option *ngFor="let developer of developers" [value]="developer.id">
+                {{ developer.name }}
+              </option>
+            </select>
+          </label>
+          <p *ngIf="developerLoadError" class="planner-modal-error" role="alert">
+            {{ developerLoadError }}
+          </p>
+        </ng-container>
+      </div>
+
+      <p *ngIf="!canSubmit" class="planner-modal-hint" role="status">
+        <ng-container [ngSwitch]="currentRequest.type">
+          <span *ngSwitchCase="'sprint'">Cadastre um Quarter antes de criar a Sprint.</span>
+          <span *ngSwitchCase="'coatend'">Cadastre uma Sprint antes de criar a Coatend.</span>
+          <span *ngSwitchCase="'activity'">Crie uma Coatend para associar a atividade.</span>
+        </ng-container>
+      </p>
+
+      <footer class="planner-modal-footer">
+        <button type="button" class="btn btn-outline-secondary" (click)="close()">
+          Cancelar
+        </button>
+        <button
+          type="submit"
+          class="btn btn-primary"
+          [disabled]="itemForm.invalid || !canSubmit || quarterDateConflict || sprintDateConflict">
+          Salvar
+        </button>
+      </footer>
+    </form>
+  </section>
+</div>

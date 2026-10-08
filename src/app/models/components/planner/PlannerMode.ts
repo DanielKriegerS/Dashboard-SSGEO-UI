@@ -1,0 +1,1 @@
+export type PlannerMode = 'empty' | 'partial' | 'structured';
