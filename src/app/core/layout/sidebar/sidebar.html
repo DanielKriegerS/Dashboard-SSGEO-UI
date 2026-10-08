@@ -1,20 +1,81 @@
 <nav
-  class="sidebar bg-dark text-white d-flex flex-column p-3"
-  [class.collapsed]="collapsed">
+  class="sidebar"
+  [class.collapsed]="collapsed"
+  aria-label="Navegação principal"
+>
+  <div class="sidebar-header">
+    <span class="brand">Sprint Manager</span>
 
-  <button class="btn btn-sm btn-light mb-3" (click)="toggle()">
-    {{ collapsed ? '➡' : '⬅' }}
-  </button>
+    <button
+      type="button"
+      class="toggle-btn"
+      (click)="toggle()"
+      [attr.aria-label]="collapsed ? 'Expandir menu' : 'Recolher menu'"
+      [attr.title]="collapsed ? 'Expandir menu' : 'Recolher menu'"
+    >
+      <span
+        class="toggle-icon"
+        [class.expanded]="!collapsed"
+        aria-hidden="true"
+      ></span>
+    </button>
+  </div>
 
-  <ul class="nav flex-column" *ngIf="!collapsed">
+  <ul class="menu">
+    <li>
+      <a
+        routerLink="/"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: true }"
+        [attr.title]="collapsed ? 'Home' : null"
+      >
+        <span class="menu-icon" aria-hidden="true">H</span>
+        <span class="menu-label">Home</span>
+      </a>
+    </li>
 
-    <li><a routerLink="/" class="nav-link text-white">Home</a></li>
-    <li><a routerLink="/quarters" class="nav-link text-white">Quarters</a></li>
-    <li><a routerLink="/sprints" class="nav-link text-white">Sprints</a></li>
-    <li><a routerLink="/coatends" class="nav-link text-white">Coatends</a></li>
-    <li><a routerLink="/developers" class="nav-link text-white">Desenvolvedores</a></li>
+    <li>
+      <a
+        routerLink="/quarters"
+        routerLinkActive="active"
+        [attr.title]="collapsed ? 'Quarters' : null"
+      >
+        <span class="menu-icon" aria-hidden="true">Q</span>
+        <span class="menu-label">Quarters</span>
+      </a>
+    </li>
 
+    <li>
+      <a
+        routerLink="/sprints"
+        routerLinkActive="active"
+        [attr.title]="collapsed ? 'Sprints' : null"
+      >
+        <span class="menu-icon" aria-hidden="true">S</span>
+        <span class="menu-label">Sprints</span>
+      </a>
+    </li>
 
+    <li>
+      <a
+        routerLink="/coatends"
+        routerLinkActive="active"
+        [attr.title]="collapsed ? 'Coatends' : null"
+      >
+        <span class="menu-icon" aria-hidden="true">C</span>
+        <span class="menu-label">Coatends</span>
+      </a>
+    </li>
+
+    <li>
+      <a
+        routerLink="/developers"
+        routerLinkActive="active"
+        [attr.title]="collapsed ? 'Desenvolvedores' : null"
+      >
+        <span class="menu-icon" aria-hidden="true">D</span>
+        <span class="menu-label">Desenvolvedores</span>
+      </a>
+    </li>
   </ul>
-
 </nav>
