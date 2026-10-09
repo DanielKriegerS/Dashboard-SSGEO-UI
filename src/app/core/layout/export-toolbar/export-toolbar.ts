@@ -26,6 +26,7 @@ import { PlannerExportContextService } from '../../../shared/services/planner-ex
 })
 export class ExportToolbar {
   @Input() fullWidth = false;
+  @Input() collapsed = false;
 
   @ViewChild(PlannerExportOptions)
   exportOptions?: PlannerExportOptions;

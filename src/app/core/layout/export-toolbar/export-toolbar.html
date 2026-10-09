@@ -1,13 +1,23 @@
 <div
   class="planner-export-toolbar"
-  [class.planner-export-toolbar-full-width]="fullWidth">
+  [class.planner-export-toolbar-full-width]="fullWidth"
+  [class.collapsed]="collapsed">
 
   <button
     type="button"
-    class="btn btn-outline-primary"
+    class="planner-export-button"
     (click)="openExportOptions()"
-    [disabled]="exporting || !exportContext.canExport()">
-    {{ exporting ? 'Exportando...' : 'Exportar' }}
+    [disabled]="exporting || !exportContext.canExport()"
+    [attr.title]="collapsed ? (exporting ? 'Exportando...' : 'Exportar planner') : null"
+    [attr.aria-label]="exporting ? 'Exportando planner' : 'Exportar planner'">
+
+    <span class="planner-export-icon" aria-hidden="true">
+      E
+    </span>
+
+    <span class="planner-export-label">
+      {{ exporting ? 'Exportando...' : 'Exportar' }}
+    </span>
   </button>
 </div>
 
