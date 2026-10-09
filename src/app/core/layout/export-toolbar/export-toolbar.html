@@ -1,0 +1,17 @@
+<div
+  class="planner-export-toolbar"
+  [class.planner-export-toolbar-full-width]="fullWidth">
+
+  <button
+    type="button"
+    class="btn btn-outline-primary"
+    (click)="openExportOptions()"
+    [disabled]="exporting || !exportContext.canExport()">
+    {{ exporting ? 'Exportando...' : 'Exportar' }}
+  </button>
+</div>
+
+<app-planner-export-options
+  [exporting]="exporting"
+  (exportRequested)="exportPlanner($event)">
+</app-planner-export-options>

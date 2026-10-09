@@ -2,66 +2,6 @@
   min-width: 0;
 }
 
-.planner-block-toolbar {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-bottom: 0.75rem;
-}
-
-.planner-block-legend {
-  color: #64748b;
-  font-size: 0.8rem;
-}
-
-.planner-block-list {
-  display: grid;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-}
-
-.planner-block-list[hidden] {
-  display: none;
-}
-
-.planner-block-list-item {
-  display: grid;
-  gap: 0.25rem;
-  width: 100%;
-  padding: 0.75rem 1rem;
-  border: 1px solid #dbe3ec;
-  border-radius: 0.5rem;
-  color: #334155;
-  background: #f8fafc;
-  text-align: left;
-  cursor: pointer;
-}
-
-.planner-block-list-item:hover {
-  border-color: #2563eb;
-}
-
-.planner-block-list-item:focus-visible {
-  outline: 2px solid #2563eb;
-}
-
-.planner-block-edit-hint {
-  color: #2563eb;
-  font-size: 0.8rem;
-}
-
-.planner-block-conflict-notice {
-  padding: 0.75rem;
-  border: 1px solid #f2d28a;
-  border-radius: 0.5rem;
-  color: #704d00;
-  background: #fff8e6;
-}
-
-.planner-block-list-conflict {
-  color: #b42318;
-}
 
 .planner-weekend-legend {
   display: flex;

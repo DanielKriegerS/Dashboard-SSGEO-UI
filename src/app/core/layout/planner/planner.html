@@ -10,41 +10,6 @@
     (submitted)="placeholderSubmitted.emit($event)">
   </app-planner-placeholder-actions>
 
-  <div class="planner-block-toolbar">
-    <button type="button" class="btn btn-outline-primary" (click)="openBlockCreation()">
-      Adicionar bloqueio
-    </button>
-    <button
-      type="button"
-      class="btn btn-outline-secondary"
-      [attr.aria-expanded]="blocksExpanded"
-      aria-controls="planner-block-list"
-      (click)="blocksExpanded = !blocksExpanded">
-      Bloqueios ({{ blocks.length }})
-    </button>
-    <span class="planner-block-legend">BC: corporativo · BD: dependência · !: conflito</span>
-  </div>
-  <p *ngIf="conflictingActivityCount" class="planner-block-conflict-notice" role="status">
-    {{ conflictingActivityCount }} atividade(s) em conflito com bloqueios.
-    As atividades foram preservadas; edite suas datas ou o bloqueio para replanejar.
-  </p>
-  <div id="planner-block-list" class="planner-block-list" [hidden]="!blocksExpanded">
-    <p *ngIf="!blocks.length" class="mb-0">Nenhum bloqueio cadastrado.</p>
-    <button
-      *ngFor="let block of blocks"
-      type="button"
-      class="planner-block-list-item"
-      (click)="openBlockEditor(block)">
-      <strong>{{ block.type === 'CORPORATE' ? 'BC — Corporativo' : 'BD — Dependência' }}</strong>
-      <span>{{ blockScopeLabel(block) }}</span>
-      <span>{{ block.startDate | date:'dd/MM/yyyy' }} até {{ block.endDate | date:'dd/MM/yyyy' }}</span>
-      <span *ngIf="block.conflictingActivityIds.length" class="planner-block-list-conflict">
-        ! {{ block.conflictingActivityIds.length }} atividade(s) em conflito
-      </span>
-      <span class="planner-block-edit-hint">Editar bloqueio</span>
-    </button>
-  </div>
-
   <p class="planner-weekend-legend">
     <span class="planner-weekend-swatch" aria-hidden="true"></span>
     Sábados, domingos e feriados destacados.

@@ -1,11 +1,11 @@
-import { ChangeDetectorRef, Component, inject, OnInit, ViewChild } from '@angular/core';
+import { ChangeDetectorRef, Component, inject, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { Meta, Title } from '@angular/platform-browser';
 import { PlannerRow } from '../../../models/components/planner/PlannerRow';
 import { PlannerCell } from '../../../models/components/planner/PlannerCell';
 import { TimelineModel } from '../../../models/timeline/TimelineModel';
 import { Planner } from "../../layout/planner/planner";
 import { CoatendService } from '../../../services/coatend';
-import { finalize, forkJoin, map, Observable, of, switchMap, tap } from 'rxjs';
+import { forkJoin, map, Observable, of, switchMap } from 'rxjs';
 import { TimelineService } from '../../../services/timeline-service';
 import { Quarter as QuarterService } from '../../../services/quarter';
 import { PlannerQuarterGroup } from '../../../models/components/planner/PlannerQuarterGroup';
@@ -13,7 +13,7 @@ import { CoatendPlannerModel } from '../../../models/components/planner/CoatendP
 import { PlannerEntries } from '../../../models/components/planner/PlannerEntries';
 import { PlannerHeader } from '../../../models/components/planner/PlannerHeader';
 import { PlannerDateSegment } from '../../../models/components/planner/PlannerDateSegment';
-import { CommonModule, DOCUMENT } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { SprintService } from '../../../services/sprint';
 import { SprintSummary } from '../../../models/sprint/SprintSummary';
 import { QuarterSummary } from '../../../models/quarter/QuarterSummary';
@@ -29,33 +29,41 @@ import { TimelineService as TimelineMutationService } from '../../../services/ti
 import { PlannerDisplayOptions } from '../../layout/planner-display-options/planner-display-options';
 import { PlannerDisplaySelection } from '../../../models/components/planner/PlannerDisplaySelection';
 import { requiresActivityDeveloper } from '../../../models/components/Activities';
-import { PlannerExportService } from '../../../services/planner-export';
-import { PlannerExportRequest } from '../../../models/components/planner/PlannerExportRequest';
-import { PlannerExportOptions } from '../../layout/planner-export-options/planner-export-options';
 import { PlanningBlockService } from '../../../services/planning-block';
 import { BlockRequest, PlanningBlock } from '../../../models/components/planner/PlanningBlock';
 import { buildPlannerBlockEntries, getActivityBlockingBlocks } from '../../../shared/utils/planner-blocks';
 import { HttpErrorResponse } from '@angular/common/http';
 import { getActivityDateRanges } from '../../../shared/utils/planner-dates';
+import { PlannerPlaceholderActions } from '../../layout/planner-placeholder-actions/planner-placeholder-actions';
+import { PlannerBlockToolbar } from '../../layout/planner-block-toolbar/planner-block-toolbar';
+import { PlannerExportContextService } from '../../../shared/services/planner-export-context';
 
 @Component({
   selector: 'app-main',
-  imports: [Planner, CommonModule, PlannerDisplayOptions, PlannerExportOptions],
+  imports: [
+    Planner, 
+    CommonModule, 
+    PlannerDisplayOptions,  
+    PlannerBlockToolbar
+  ],
   templateUrl: './main.html',
   styleUrl: './main.scss',
 })
-export class Main implements OnInit{
-  @ViewChild(PlannerExportOptions) exportOptions?: PlannerExportOptions;
-  private readonly document = inject(DOCUMENT);
-  private readonly plannerExportService = inject(PlannerExportService);
+export class Main implements OnInit, OnDestroy{
+  @ViewChild('placeholderActions')
+  placeholderActions?: PlannerPlaceholderActions;
+
+  @ViewChild('plannerComponent')
+  plannerComponent?: Planner;
+
   private readonly blockService = inject(PlanningBlockService);
-  exporting = false;
+
   plannerData: PlannerRow[] = [];
   plannerHierarchy: PlannerQuarterGroup[] = [];
   
   days: string[] = [];
   visibleDays: string[] = [];
-
+  
   quarterHeaders: PlannerHeader[] = [];
   sprintHeaders: PlannerHeader[] = [];
 
@@ -70,7 +78,8 @@ export class Main implements OnInit{
   dayWindowSize = 15;
   displaySelection: PlannerDisplaySelection = { type: 'count', count: 15 };
   private readonly defaultPlaceholderDays = 15;
-
+  private readonly exportContext =
+  inject(PlannerExportContextService);
   mode: PlannerMode = 'empty';
 
   get hasCompleteStructure(): boolean {
@@ -107,48 +116,6 @@ export class Main implements OnInit{
 
   ngOnInit() {
     this.loadPlannerData();
-  }
-
-  openExportOptions(): void {
-    this.exportOptions?.open(this.displaySelection, this.visibleDays);
-  }
-
-  exportPlanner(request: PlannerExportRequest): void {
-    if (this.exporting) {
-      return;
-    }
-    this.exporting = true;
-    this.plannerExportService.export(request).pipe(
-      tap(blob => this.downloadPlannerFile(blob)),
-      finalize(() => {
-        this.exporting = false;
-        this.cdr.detectChanges();
-      })
-    ).subscribe({
-      next: () => {
-        if (this.exportOptions) {
-          this.exportOptions.opened = false;
-        }
-      },
-      error: error => {
-        console.error('Erro ao exportar planner:', error);
-        this.feedback.error('Não foi possível exportar o planner. Tente novamente.');
-      }
-    });
-  }
-
-  private downloadPlannerFile(blob: Blob): void {
-    const url = URL.createObjectURL(blob);
-    const link = this.document.createElement('a');
-    try {
-      link.href = url;
-      link.download = 'planner.xlsx';
-      this.document.body.appendChild(link);
-      link.click();
-    } finally {
-      link.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 0);
-    }
   }
 
   loadPlannerData(): void {
@@ -579,12 +546,12 @@ export class Main implements OnInit{
     this.updateVisibleStructuredPlanner();
   }
 
-
   updateVisibleStructuredPlanner(): void {
     this.visibleDays = this.days.slice(
       this.dayWindowStart,
       this.dayWindowStart + this.dayWindowSize
     );
+
     this.syncPeriodSelection();
 
     this.plannerData = this.buildPlannerData(
@@ -607,6 +574,8 @@ export class Main implements OnInit{
       this.coatends,
       this.visibleDays
     );
+
+    this.syncExportContext();
   }
 
   loadPlaceholderPlanner(): void {
@@ -654,11 +623,19 @@ export class Main implements OnInit{
       this.dayWindowStart,
       this.dayWindowStart + this.dayWindowSize
     );
+
     this.syncPeriodSelection();
 
-    this.quarterHeaders = this.buildPlaceholderQuarterHeaders(this.visibleDays);
-    this.sprintHeaders = this.buildPlaceholderSprintHeaders(this.visibleDays);
-    this.plannerHierarchy = this.buildPlaceholderHierarchy(this.visibleDays);
+    this.quarterHeaders =
+      this.buildPlaceholderQuarterHeaders(this.visibleDays);
+
+    this.sprintHeaders =
+      this.buildPlaceholderSprintHeaders(this.visibleDays);
+
+    this.plannerHierarchy =
+      this.buildPlaceholderHierarchy(this.visibleDays);
+
+    this.syncExportContext();
   }
 
   buildPlaceholderQuarterHeaders(days: string[]): PlannerHeader[] {
@@ -1217,5 +1194,34 @@ buildDateSegmentHeaders(
     return parsed.getFullYear() === year &&
       parsed.getMonth() === month - 1 &&
       parsed.getDate() === day;
+  }
+
+  openBlockCreation(): void {
+    this.plannerComponent?.openPlaceholder({
+      type: 'block',
+      startDate: this.days[0]
+    });
+  }
+
+  openBlockEditor(block: PlanningBlock): void {
+    this.plannerComponent?.openPlaceholder({
+      type: 'block',
+      blockId: block.id,
+      blockType: block.type,
+      coatendId: block.coatendId ?? undefined,
+      startDate: block.startDate,
+      endDate: block.endDate
+    });
+  }
+
+  private syncExportContext(): void {
+    this.exportContext.update(
+      this.visibleDays,
+      this.displaySelection
+    );
+  }
+
+  ngOnDestroy(): void {
+    this.exportContext.clear();
   }
 }

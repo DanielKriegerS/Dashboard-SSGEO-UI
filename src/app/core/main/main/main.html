@@ -1,4 +1,4 @@
-<main class="planner-page">
+<main class="row planner-page">
   <header class="row planner-heading text-center">
     <h1>Planner - Squad Sustentação GEO</h1>
     <p class="planner-description">
@@ -6,25 +6,25 @@
     </p>
   </header>
 
-  <app-planner-display-options
-    [selection]="displaySelection"
-    [minDate]="days[0] || ''"
-    [maxDate]="days[days.length - 1] || ''"
-    (selectionApplied)="applyDisplaySelection($event)">
-  </app-planner-display-options>
+  <div class="planner-toolbar">
+    <app-planner-display-options
+      [selection]="displaySelection"
+      [minDate]="days[0] || ''"
+      [maxDate]="days[days.length - 1] || ''"
+      (selectionApplied)="applyDisplaySelection($event)">
+    </app-planner-display-options>
 
-  <div class="planner-export-toolbar">
-    <button type="button" class="btn btn-outline-primary" (click)="openExportOptions()" [disabled]="exporting || !visibleDays.length">
-      {{ exporting ? 'Exportando...' : 'Exportar' }}
-    </button>
+    <div class="planner-block-toolbar-container">
+      <app-planner-block-toolbar
+            [blocks]="blocks"
+            [coatends]="coatends"
+            (blockCreationRequested)="openBlockCreation()"
+            (blockEditionRequested)="openBlockEditor($event)"
+            class="planner-block-toolbar">
+      </app-planner-block-toolbar>
+    </div>
+    
   </div>
-
-  <app-planner-export-options
-    [quarters]="quarters"
-    [sprints]="sprints"
-    [exporting]="exporting"
-    (exportRequested)="exportPlanner($event)">
-  </app-planner-export-options>
 
   <nav class="planner-date-navigation" aria-label="Navegação do período">
     <button
@@ -57,17 +57,20 @@
   </nav>
 
   <app-planner
-    [days]="visibleDays"
+    #plannerComponent
     [hierarchy]="plannerHierarchy"
+    [days]="days"
     [quarterHeaders]="quarterHeaders"
     [sprintHeaders]="sprintHeaders"
     [mode]="mode"
     [hasCompleteStructure]="hasCompleteStructure"
     [quarters]="quarters"
     [sprints]="sprints"
-    [coatends]="coatendSummaries"
+    [coatends]="coatends"
     [blocks]="blocks"
     [timeline]="timeline"
-    (placeholderSubmitted)="createPlannerItem($event)">
+    (placeholderSubmitted)="createPlannerItem($event)"
+    (blockCreationRequested)="openBlockCreation()"
+    (blockEditionRequested)="openBlockEditor($any($event))">
   </app-planner>
 </main>

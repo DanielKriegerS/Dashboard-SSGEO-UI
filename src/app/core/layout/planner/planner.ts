@@ -45,31 +45,8 @@ export class Planner {
   @Input() coatends: CoatendSummary[] = [];
   @Input() blocks: PlanningBlock[] = [];
   @Input() timeline: TimelineModel[] = [];
-  blocksExpanded = false;
-
-  get conflictingActivityCount(): number {
-    return new Set(this.blocks.flatMap(block => block.conflictingActivityIds)).size;
-  }
-
-  blockScopeLabel(block: PlanningBlock): string {
-    if (block.type === 'CORPORATE') {
-      return 'Todo o planejamento';
-    }
-    const coatend = this.coatends.find(item => item.id === block.coatendId);
-    return coatend ? `${coatend.coatendNumber} - ${coatend.description}` : `Coatend ${block.coatendId}`;
-  }
-
-  openBlockCreation(): void {
-    this.openPlaceholder({ type: 'block', startDate: this.days[0] });
-  }
-
-  openBlockEditor(block: PlanningBlock): void {
-    this.openPlaceholder({
-      type: 'block', blockId: block.id, blockType: block.type,
-      coatendId: block.coatendId ?? undefined,
-      startDate: block.startDate, endDate: block.endDate
-    });
-  }
+  @ViewChild('plannerComponent')
+  plannerComponent?: Planner;
 
   globalBlockEntries(day: string): PlannerEntries[] {
     return buildPlannerBlockEntries(this.blocks, day, null, this.timeline);

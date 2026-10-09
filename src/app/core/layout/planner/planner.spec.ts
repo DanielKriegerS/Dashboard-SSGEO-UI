@@ -23,33 +23,6 @@ describe('Planner', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should create a global block directly without planning structures', async () => {
-    fixture.componentRef.setInput('days', ['2026-10-08']);
-    await fixture.whenStable();
-    const button: HTMLButtonElement = fixture.nativeElement.querySelector('.planner-block-toolbar button');
-    button.click();
-    expect(component.placeholderActions?.request).toEqual({ type: 'block', startDate: '2026-10-08' });
-  });
-
-  it('should list blocks outside the visible period and open them for editing', async () => {
-    const block = { id: 'b1', type: 'DEPENDENCY' as const, coatendId: 'c1', startDate: '2027-01-01',
-      endDate: '2027-01-02', conflictingActivityIds: ['a1'] };
-    fixture.componentRef.setInput('blocks', [block, { ...block, id: 'b2' }]);
-    fixture.componentRef.setInput('coatends', [{ id: 'c1', coatendNumber: 42, description: 'Test' }]);
-    await fixture.whenStable();
-    expect(component.conflictingActivityCount).toBe(1);
-    const toggle: HTMLButtonElement = fixture.nativeElement.querySelector('.planner-block-toolbar button:nth-child(2)');
-    toggle.click();
-    await fixture.whenStable();
-    const list: HTMLElement = fixture.nativeElement.querySelector('#planner-block-list');
-    expect(list.hidden).toBe(false);
-    const button: HTMLButtonElement = list.querySelector('button')!;
-    expect(button.textContent).toContain('42 - Test');
-    button.click();
-    expect(component.placeholderActions?.request?.blockId).toBe('b1');
-    expect(component.placeholderActions?.startDate).toBe('2027-01-01');
-  });
-
   it('should render and edit global blocks in the structured add-coatend row', async () => {
     fixture.componentRef.setInput('mode', 'structured');
     fixture.componentRef.setInput('blocks', [{

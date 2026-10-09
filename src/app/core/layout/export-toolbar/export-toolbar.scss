@@ -1,0 +1,12 @@
+:host {
+  display: block;
+}
+
+.planner-export-toolbar {
+  display: flex;
+}
+
+.planner-export-toolbar-full-width,
+.planner-export-toolbar-full-width .btn {
+  width: 100%;
+}
