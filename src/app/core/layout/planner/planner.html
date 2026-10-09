@@ -47,7 +47,7 @@
 
   <p class="planner-weekend-legend">
     <span class="planner-weekend-swatch" aria-hidden="true"></span>
-    Sábados e domingos destacados. Atividades continuam permitidas nesses dias.
+    Sábados, domingos e feriados destacados.
   </p>
 
   <div class="planner-table-container" role="region" aria-label="Tabela do planner" tabindex="0">
@@ -117,9 +117,12 @@
             *ngFor="let day of days"
             scope="col"
             class="planner-day-header"
-            [class.planner-weekend-header]="!!weekendDayName(day)">
+            [class.planner-weekend-header]="!!nonWorkingDayLabel(day)"
+            [title]="holidayName(day) || weekendDayName(day)">
             {{ day | date:'dd/MM' }}
-            <span *ngIf="weekendDayName(day) as weekend" class="planner-weekend-label">{{ weekend }}</span>
+            @if (nonWorkingDayLabel(day); as label) {
+              <span class="planner-weekend-label">{{ label }}</span>
+            }
           </th>
         </tr>
       </thead>
@@ -152,10 +155,10 @@
               <td
                 *ngFor="let cell of row.cells"
                 class="planner-day-cell planner-add-activity-cell"
-                [class.planner-weekend-cell]="!!weekendDayName(cell.date)"
+                [class.planner-weekend-cell]="!!nonWorkingDayLabel(cell.date)"
                 tabindex="0"
-                [attr.aria-label]="'Adicionar atividade ou bloqueio em ' + (cell.date | date:'dd/MM/yyyy') + (weekendDayName(cell.date) ? ' — ' + weekendDayName(cell.date) : '')"
-                [title]="(weekendDayName(cell.date) ? weekendDayName(cell.date) + ': ' : '') + 'Adicionar atividade ou bloqueio'"
+                [attr.aria-label]="'Adicionar atividade ou bloqueio em ' + (cell.date | date:'dd/MM/yyyy') + (nonWorkingDayLabel(cell.date) ? ' — ' + nonWorkingDayLabel(cell.date) : '')"
+                [title]="((holidayName(cell.date) || weekendDayName(cell.date)) ? (holidayName(cell.date) || weekendDayName(cell.date)) + ': ' : '') + 'Adicionar atividade ou bloqueio'"
                 (click)="openActivityCreation(cell.date, row.coatendId)"
                 (keydown)="onActivityCellKeydown($event, cell.date, row.coatendId)">
                 <div class="planner-cell-content">
@@ -189,10 +192,10 @@
               <td
                 *ngFor="let day of days"
                 class="planner-day-cell planner-add-activity-cell"
-                [class.planner-weekend-cell]="!!weekendDayName(day)"
+                [class.planner-weekend-cell]="!!nonWorkingDayLabel(day)"
                 tabindex="0"
-                [attr.aria-label]="'Adicionar atividade ou bloqueio em ' + (day | date:'dd/MM/yyyy') + (weekendDayName(day) ? ' — ' + weekendDayName(day) : '')"
-                [title]="(weekendDayName(day) ? weekendDayName(day) + ': ' : '') + 'Adicionar atividade ou bloqueio'"
+                [attr.aria-label]="'Adicionar atividade ou bloqueio em ' + (day | date:'dd/MM/yyyy') + (nonWorkingDayLabel(day) ? ' — ' + nonWorkingDayLabel(day) : '')"
+                [title]="((holidayName(day) || weekendDayName(day)) ? (holidayName(day) || weekendDayName(day)) + ': ' : '') + 'Adicionar atividade ou bloqueio'"
                 (click)="openActivityCreation(day, null)"
                 (keydown)="onActivityCellKeydown($event, day, null)">
                 <div class="planner-cell-content">

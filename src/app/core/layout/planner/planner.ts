@@ -14,7 +14,7 @@ import {
   PlannerPlaceholderType
 } from '../../../models/components/planner/PlannerPlaceholderSubmission';
 import { PlannerEntries } from '../../../models/components/planner/PlannerEntries';
-import { getWeekendDayName } from '../../../shared/utils/planner-dates';
+import { getWeekendDayName, getHolidayName, getNonWorkingDayLabel } from '../../../shared/utils/planner-dates';
 import { PlanningBlock } from '../../../models/components/planner/PlanningBlock';
 import { TimelineModel } from '../../../models/timeline/TimelineModel';
 import { buildPlannerBlockEntries } from '../../../shared/utils/planner-blocks';
@@ -27,6 +27,8 @@ import { buildPlannerBlockEntries } from '../../../shared/utils/planner-blocks';
 })
 export class Planner {
   readonly weekendDayName = getWeekendDayName;
+  readonly holidayName = getHolidayName;
+  readonly nonWorkingDayLabel = getNonWorkingDayLabel;
 
   @ViewChild('placeholderActions') placeholderActions?: PlannerPlaceholderActions;
   @Output() placeholderSubmitted = new EventEmitter<PlannerPlaceholderSubmission>();

@@ -7,9 +7,29 @@ function parsePlannerDate(value: string): Date | null {
     ? date : null;
 }
 
-const nationalFixedHolidays = new Set([
-  '01-01', '04-21', '05-01', '09-07', '10-12', '11-02', '11-15', '11-20', '12-25'
+const nationalFixedHolidays = new Map([
+  ['01-01', 'Confraternização Universal'],
+  ['04-21', 'Tiradentes'],
+  ['05-01', 'Dia do Trabalho'],
+  ['09-07', 'Independência do Brasil'],
+  ['10-12', 'Nossa Senhora Aparecida'],
+  ['11-02', 'Finados'],
+  ['11-15', 'Proclamação da República'],
+  ['11-20', 'Consciência Negra'],
+  ['12-25', 'Natal']
 ]);
+
+export function getHolidayName(value: string): string {
+  const date = parsePlannerDate(value);
+  if (!date || (value.substring(5) === '11-20' && date.getUTCFullYear() < 2024)) {
+    return '';
+  }
+  return nationalFixedHolidays.get(value.substring(5)) ?? '';
+}
+
+export function getNonWorkingDayLabel(value: string): string {
+  return [getWeekendDayName(value), getHolidayName(value) ? 'Feriado' : ''].filter(Boolean).join(' / ');
+}
 
 export function getActivityDateRanges(
   startDate: string, endDate: string, includeWeekends: boolean
@@ -26,8 +46,7 @@ export function getActivityDateRanges(
   let current: { startDate: string; endDate: string } | null = null;
   for (const day = new Date(start); day <= end; day.setUTCDate(day.getUTCDate() + 1)) {
     const date = day.toISOString().substring(0, 10);
-    const holiday = nationalFixedHolidays.has(date.substring(5))
-      && (date.substring(5) !== '11-20' || day.getUTCFullYear() >= 2024);
+    const holiday = Boolean(getHolidayName(date));
     if (day.getUTCDay() === 0 || day.getUTCDay() === 6 || holiday) {
       current = null;
     } else if (current) {

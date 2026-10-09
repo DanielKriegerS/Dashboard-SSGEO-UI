@@ -1,6 +1,25 @@
-import { dateRangeIncludesWeekend, getWeekendDayName, getActivityDateRanges } from './planner-dates';
+import { dateRangeIncludesWeekend, getWeekendDayName, getActivityDateRanges, getHolidayName, getNonWorkingDayLabel } from './planner-dates';
 
 describe('planner weekend dates', () => {
+  it.each([
+    ['2026-10-12', 'Nossa Senhora Aparecida'],
+    ['2026-12-25', 'Natal'],
+    ['2026-11-20', 'Consciência Negra'],
+    ['2023-11-20', ''],
+    ['2026-10-13', ''],
+    ['2026-02-30', ''],
+    ['', '']
+  ])('should identify holiday %s using the activity calendar', (date, name) => {
+    expect(getHolidayName(date)).toBe(name);
+  });
+
+  it('should label holidays and retain both labels when they fall on weekends', () => {
+    expect(getNonWorkingDayLabel('2026-10-12')).toBe('Feriado');
+    expect(getNonWorkingDayLabel('2027-12-25')).toBe('Sábado / Feriado');
+    expect(getNonWorkingDayLabel('2026-10-10')).toBe('Sábado');
+    expect(getNonWorkingDayLabel('2026-10-13')).toBe('');
+  });
+
   it('should omit October 10, 11 and 12 when non-working days are excluded', () => {
     expect(getActivityDateRanges('2026-10-09', '2026-10-15', false)).toEqual([
       { startDate: '2026-10-09', endDate: '2026-10-09' },

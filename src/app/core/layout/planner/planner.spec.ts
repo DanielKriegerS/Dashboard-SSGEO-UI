@@ -169,6 +169,26 @@ describe('Planner', () => {
     expect(component.placeholderActions?.activityWeekendWarning).toContain('sábado');
   });
 
+  it.each(['empty', 'partial', 'structured'])('should mark holidays and keep their cells clickable in %s mode', async mode => {
+    fixture.componentRef.setInput('mode', mode);
+    await renderRow(['2026-10-12', '2026-10-13']);
+    const headers: HTMLElement[] = Array.from(fixture.nativeElement.querySelectorAll('.planner-day-header'));
+    expect(headers[0].classList.contains('planner-weekend-header')).toBe(true);
+    expect(headers[0].querySelector('.planner-weekend-label')?.textContent).toBe('Feriado');
+    expect(headers[0].title).toBe('Nossa Senhora Aparecida');
+    expect(headers[1].classList.contains('planner-weekend-header')).toBe(false);
+    const cells: HTMLElement[] = Array.from(fixture.nativeElement.querySelectorAll('.planner-day-cell'));
+    expect(cells[0].classList.contains('planner-weekend-cell')).toBe(true);
+    expect(cells[0].getAttribute('aria-label')).toContain('Feriado');
+    expect(cells[1].classList.contains('planner-weekend-cell')).toBe(false);
+    if (mode === 'structured') {
+      expect(cells[2].classList.contains('planner-weekend-cell')).toBe(true);
+    }
+    cells[0].click();
+    await fixture.whenStable();
+    expect(component.placeholderActions?.startDate).toBe('2026-10-12');
+  });
+
   it('should not mark weekdays as weekends', async () => {
     await renderRow();
     expect(fixture.nativeElement.querySelector('.planner-weekend-header')).toBeNull();
