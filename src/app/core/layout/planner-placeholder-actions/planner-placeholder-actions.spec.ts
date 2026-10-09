@@ -27,6 +27,150 @@ describe('PlannerPlaceholderActions', () => {
     expect(component).toBeTruthy();
   });
 
+  it.each([undefined, 'a1'])('should prevent saving a blocked activity when activity ID is %s', async activityId => {
+    component.coatends = [{ id: 'c1', description: 'Test', coatendNumber: 1 }];
+    component.blocks = [{
+      id: 'b1', type: 'CORPORATE', coatendId: null, startDate: '2026-10-08',
+      endDate: '2026-10-10', conflictingActivityIds: []
+    }];
+    component.open({ type: 'activity', activityId, coatendId: 'c1', activity: Activity.SWAP,
+      startDate: '2026-10-10', endDate: '2026-10-11' });
+    component.includeWeekends = true;
+    fixture.changeDetectorRef.markForCheck();
+    await fixture.whenStable();
+    expect(component.canSubmit).toBe(false);
+    expect(fixture.nativeElement.querySelector('[role="alert"]').textContent).toContain('Não é possível salvar');
+    expect(fixture.nativeElement.querySelector('button[type="submit"]').disabled).toBe(true);
+    const emit = vi.spyOn(component.submitted, 'emit');
+    component.submit();
+    expect(emit).not.toHaveBeenCalled();
+    component.startDate = '2026-10-11';
+    expect(component.canSubmit).toBe(true);
+  });
+
+  it('should allow non-swap activities through corporate blocks and other coatends through dependency blocks', () => {
+    component.coatends = [{ id: 'c1', description: 'Test', coatendNumber: 1 }];
+    component.blocks = [
+      { id: 'bc', type: 'CORPORATE', coatendId: null, startDate: '2026-10-08', endDate: '2026-10-10', conflictingActivityIds: [] },
+      { id: 'bd', type: 'DEPENDENCY', coatendId: 'c2', startDate: '2026-10-08', endDate: '2026-10-10', conflictingActivityIds: [] }
+    ];
+    component.open({ type: 'activity', coatendId: 'c1', activity: Activity.DEVELOPMENT,
+      developerId: 'd1', startDate: '2026-10-08', endDate: '2026-10-09' });
+    expect(component.canSubmit).toBe(true);
+    component.blocks[1].coatendId = 'c1';
+    expect(component.canSubmit).toBe(false);
+  });
+
+  it('should preserve the selected coatend when switching from dependency block to activity', () => {
+    component.open({ type: 'block', coatendId: 'c1', startDate: '2026-10-08' });
+    component.coatendId = 'c2';
+    component.changeRecordType('activity');
+    expect(component.request?.coatendId).toBe('c2');
+  });
+
+  it('should switch a selected cell to a global block without requiring a developer', () => {
+    component.open({ type: 'activity', coatendId: 'c1', startDate: '2026-10-08' });
+    component.changeRecordType('block');
+    component.endDate = '2026-10-10';
+    const emit = vi.spyOn(component.submitted, 'emit');
+    component.submit();
+    expect(emit).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'block', blockType: 'CORPORATE', startDate: '2026-10-08', endDate: '2026-10-10', coatendId: undefined
+    }));
+  });
+
+  it('should require a coatend and valid dates for a dependency block', () => {
+    component.open({ type: 'block', blockType: 'DEPENDENCY', startDate: '2026-10-08', endDate: '2026-10-10' });
+    expect(component.canSubmit).toBe(false);
+    component.coatends = [{ id: 'c1', description: 'Test', coatendNumber: 1 }];
+    component.coatendId = 'c1';
+    expect(component.canSubmit).toBe(true);
+    component.endDate = '2026-10-07';
+    expect(component.canSubmit).toBe(false);
+  });
+
+  it('should preserve the block ID when editing and not change it into an activity', () => {
+    component.open({ type: 'block', blockId: 'b1', blockType: 'CORPORATE', startDate: '2026-10-08', endDate: '2026-10-10' });
+    component.changeRecordType('activity');
+    expect(component.request?.type).toBe('block');
+    const emit = vi.spyOn(component.submitted, 'emit');
+    component.submit();
+    expect(emit).toHaveBeenCalledWith(expect.objectContaining({ blockId: 'b1', blockType: 'CORPORATE' }));
+  });
+
+  it.each([
+    ['2026-10-10', 'sábado'],
+    ['2026-10-11', 'domingo']
+  ])('should warn on %s without blocking activity submission', async (date, weekday) => {
+    component.coatends = [{ id: 'c1', description: 'Test', coatendNumber: 1 }];
+    component.open({
+      type: 'activity', coatendId: 'c1', activity: Activity.SWAP,
+      startDate: date, endDate: date
+    });
+    component.includeWeekends = true;
+    fixture.changeDetectorRef.markForCheck();
+    await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('.planner-weekend-warning').textContent).toContain(weekday);
+    const button: HTMLButtonElement = fixture.nativeElement.querySelector('button[type="submit"]');
+    expect(button.disabled).toBe(false);
+    const emit = vi.spyOn(component.submitted, 'emit');
+    button.click();
+    expect(emit).toHaveBeenCalledWith(expect.objectContaining({ startDate: date, endDate: date }));
+  });
+
+  it('should update the warning when a range spans or stops spanning a weekend', () => {
+    component.open({ type: 'activity', startDate: '2026-10-09', endDate: '2026-10-12' });
+    component.includeWeekends = true;
+    expect(component.activityWeekendWarning).toContain('período inclui');
+    component.endDate = '2026-10-09';
+    expect(component.activityWeekendWarning).toBe('');
+    component.startDate = '2026-10-11';
+    component.endDate = '2026-10-11';
+    expect(component.activityWeekendWarning).toContain('domingo');
+    component.startDate = '2026-10-12';
+    component.endDate = '2026-10-12';
+    expect(component.activityWeekendWarning).toBe('');
+  });
+
+  it('should default to working days and submit the selected inclusion option', async () => {
+    component.coatends = [{ id: 'c1', description: 'Test', coatendNumber: 1 }];
+    component.open({ type: 'activity', coatendId: 'c1', activity: Activity.SWAP,
+      startDate: '2026-10-09', endDate: '2026-10-15' });
+    expect(component.includeWeekends).toBe(false);
+    const emit = vi.spyOn(component.submitted, 'emit');
+    component.submit();
+    expect(emit).toHaveBeenCalledWith(expect.objectContaining({ includeWeekends: false }));
+    component.open({ type: 'activity', coatendId: 'c1', activity: Activity.SWAP,
+      startDate: '2026-10-10', endDate: '2026-10-12' });
+    expect(component.canSubmit).toBe(false);
+    fixture.changeDetectorRef.markForCheck();
+    await fixture.whenStable();
+    const checkbox: HTMLInputElement = fixture.nativeElement.querySelector('[name="includeWeekends"]');
+    checkbox.click();
+    await fixture.whenStable();
+    expect(component.canSubmit).toBe(true);
+    component.submit();
+    expect(emit).toHaveBeenLastCalledWith(expect.objectContaining({ includeWeekends: true }));
+  });
+
+  it('should ignore blocks on excluded dates', () => {
+    component.coatends = [{ id: 'c1', description: 'Test', coatendNumber: 1 }];
+    component.blocks = [{ id: 'b1', type: 'DEPENDENCY', coatendId: 'c1', startDate: '2026-10-10',
+      endDate: '2026-10-12', conflictingActivityIds: [] }];
+    component.open({ type: 'activity', coatendId: 'c1', activity: Activity.SWAP,
+      startDate: '2026-10-09', endDate: '2026-10-15' });
+    expect(component.canSubmit).toBe(true);
+    component.includeWeekends = true;
+    expect(component.canSubmit).toBe(false);
+  });
+
+  it('should warn when editing a weekend activity but not other planner entities', () => {
+    component.open({ type: 'activity', activityId: 'a1', startDate: '2026-10-10', endDate: '2026-10-10' });
+    expect(component.activityWeekendWarning).toContain('sábado');
+    component.open({ type: 'quarter', startDate: '2026-10-10', endDate: '2026-10-11' });
+    expect(component.activityWeekendWarning).toBe('');
+  });
+
   it.each([
     [Activity.HOMOLOGATION, 'Homologação'],
     [Activity.ADMINISTRATIVE_TASKS, 'Administrativo'],

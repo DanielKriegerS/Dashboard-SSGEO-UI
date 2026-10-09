@@ -38,6 +38,16 @@
 
     <form #itemForm="ngForm" (ngSubmit)="submit()">
       <div class="planner-modal-fields">
+        <label
+          *ngIf="!isEditing && (currentRequest.type === 'activity' || currentRequest.type === 'block')"
+          class="planner-form-field">
+          <span>Registro</span>
+          <select class="form-select" name="recordType" [ngModel]="currentRequest.type"
+            (ngModelChange)="changeRecordType($event)">
+            <option value="activity">Atividade</option>
+            <option value="block">Bloqueio</option>
+          </select>
+        </label>
         <ng-container *ngIf="currentRequest.type === 'quarter' || currentRequest.type === 'sprint'">
           <label class="planner-form-field">
             <span>Descrição</span>
@@ -136,6 +146,39 @@
           </label>
         </ng-container>
 
+        <ng-container *ngIf="currentRequest.type === 'block'">
+          <p class="planner-block-rule-hint" role="note">
+            Bloqueios corporativos impedem Pré Swap e Swap em todo o planejamento.
+            Bloqueios de dependência impedem qualquer atividade na Coatend selecionada.
+            As datas são inclusivas. Atividades existentes serão preservadas e sinalizadas
+            para replanejamento caso haja conflito.
+          </p>
+          <label class="planner-form-field">
+            <span>Tipo de bloqueio</span>
+            <select class="form-select" name="blockType" [(ngModel)]="blockType" required>
+              <option value="CORPORATE">Corporativo — todo o planejamento</option>
+              <option value="DEPENDENCY">Dependência — COATEND selecionado</option>
+            </select>
+          </label>
+          <label *ngIf="blockType === 'DEPENDENCY'" class="planner-form-field">
+            <span>COATEND</span>
+            <select class="form-select" name="blockCoatendId" [(ngModel)]="coatendId" required>
+              <option value="" disabled>Selecione um COATEND</option>
+              <option *ngFor="let coatend of coatends" [value]="coatend.id">{{ coatend.coatendNumber }} - {{ coatend.description }}</option>
+            </select>
+          </label>
+          <div class="planner-form-date-row">
+            <label class="planner-form-field">
+              <span>Data início</span>
+              <input class="form-control" type="date" name="blockStartDate" [(ngModel)]="startDate" required>
+            </label>
+            <label class="planner-form-field">
+              <span>Data fim</span>
+              <input class="form-control" type="date" name="blockEndDate" [(ngModel)]="endDate" [min]="startDate" required>
+            </label>
+          </div>
+        </ng-container>
+
         <ng-container *ngIf="currentRequest.type === 'activity'">
           <label *ngIf="!currentRequest.coatendId" class="planner-form-field">
             <span>Coatend</span>
@@ -184,6 +227,28 @@
                 required>
             </label>
           </div>
+          @if (!isEditingActivity) {
+            <label class="form-check d-flex align-items-center gap-2">
+              <input class="form-check-input m-0" type="checkbox" name="includeWeekends" [(ngModel)]="includeWeekends">
+              <span>Incluir fins de semana e feriados</span>
+            </label>
+            @if (startDate && endDate && !hasActivityDates) {
+              <p class="planner-modal-error" role="alert">O período não contém dias úteis.</p>
+            }
+          }
+          <p *ngIf="activityWeekendWarning" class="planner-weekend-warning" role="status">
+            {{ activityWeekendWarning }}
+          </p>
+          <div *ngIf="blockingActivityBlocks.length" class="planner-modal-error" role="alert">
+            Não é possível salvar esta atividade no período escolhido:
+            <ul class="mb-0">
+              <li *ngFor="let block of blockingActivityBlocks">
+                Bloqueio {{ block.type === 'CORPORATE' ? 'corporativo (Pré Swap/Swap)' : 'de dependência (todas as atividades)' }}:
+                {{ block.startDate | date:'dd/MM/yyyy' }} até {{ block.endDate | date:'dd/MM/yyyy' }}.
+              </li>
+            </ul>
+            Escolha outras datas ou edite o bloqueio para replanejar.
+          </div>
           <label *ngIf="showDeveloperField" class="planner-form-field">
             <span>Desenvolvedor</span>
             <select
@@ -207,11 +272,13 @@
         </ng-container>
       </div>
 
-      <p *ngIf="!canSubmit" class="planner-modal-hint" role="status">
+      <p *ngIf="!canSubmit && !blockingActivityBlocks.length" class="planner-modal-hint" role="status">
         <ng-container [ngSwitch]="currentRequest.type">
           <span *ngSwitchCase="'sprint'">Cadastre um Quarter antes de criar a Sprint.</span>
           <span *ngSwitchCase="'coatend'">Cadastre uma Sprint antes de criar a Coatend.</span>
-          <span *ngSwitchCase="'activity'">Crie uma Coatend para associar a atividade.</span>
+          <span *ngSwitchCase="'activity'">Selecione uma Coatend e um período com dias disponíveis.</span>
+          <span *ngSwitchCase="'block'">Informe um período válido e, para dependência, selecione uma Coatend.</span>
+          <span *ngSwitchCase="'block'">Informe um período válido e, para dependência, selecione um COATEND.</span>
         </ng-container>
       </p>
 

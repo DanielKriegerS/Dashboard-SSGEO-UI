@@ -26,6 +26,54 @@ For a complete list of available schematics (such as `components`, `directives`,
 ng generate --help
 ```
 
+## Planner weekends
+
+Saturday and Sunday columns have a different background and explicit weekday
+labels. Weekend cells remain clickable, including cells that already contain
+activities and placeholder rows. New activities have an unchecked **Incluir fins
+de semana e feriados** option. When checked, every date in the inclusive range
+is saved. Otherwise, weekends and Brazilian fixed-date national holidays are
+excluded: January 1, April 21, May 1, September 7, October 12, November 2 and 15,
+November 20 (from 2024), and December 25. Local and movable holidays are not
+included in this calendar.
+
+Working days are grouped into consecutive periods and saved atomically through
+`POST /coatends/{coatendId}/timeline/batch`. October 9-15, 2026 therefore creates
+October 9 and October 13-15 as two separate entries. Each entry can be edited
+independently. A range with no working days cannot be submitted unless inclusion
+is enabled. Blocks are checked only against included periods. Existing entries
+and editing retain their previous behavior; weekend warnings remain available
+when including weekends or editing an existing entry.
+
+## Planner blocks
+
+Use **Adicionar bloqueio**, or click a timeline cell and choose **Registro =
+Bloqueio**, to create a block. The **Bloqueios (N)** panel lists all blocks,
+including those outside the visible dates; click a list item or a BC/BD marker
+to edit it.
+
+- **BC / CORPORATE:** global; prevents PRE_SWAP and SWAP on every Coatend.
+- **BD / DEPENDENCY:** prevents every activity on the selected Coatend.
+- Both dates are inclusive. The activity modal explains matching blocks and
+  prevents submission until the activity is moved or the block is edited.
+- Creating or editing blocks preserves existing activities. Conflict markers
+  and the summary use the backend's `conflictingActivityIds`. Overlapping
+  blocks do not count the same activity twice in the summary.
+
+The frontend uses `GET /blocks`, `POST /blocks` and `PUT /blocks/{id}`. Corporate
+requests send `coatendId: null`; dependency requests send the selected Coatend ID.
+There is no delete endpoint. Excel exports include corporate blocks in global
+rows and dependency blocks below their selected Coatend, using `Bl` markers and
+the planner block colors. Dates are clipped to the export window; activity rows
+remain visible even when blocks overlap. API errors remain visible through
+planner feedback.
+
+Focused block/planner validation:
+
+```bash
+npm test -- --watch=false --ts-config=tsconfig.planner.spec.json --include=src/app/core/main/main/main.spec.ts --include=src/app/core/layout/planner/planner.spec.ts --include=src/app/core/layout/planner-placeholder-actions/planner-placeholder-actions.spec.ts --include=src/app/services/planning-block.spec.ts --include=src/app/shared/utils/planner-blocks.spec.ts
+```
+
 ## Planner Excel export
 
 The **Exportar** button above the planner opens export options for a day count,

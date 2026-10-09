@@ -123,6 +123,26 @@
   color: #b42318;
 }
 
+.planner-weekend-warning {
+  margin: 0;
+  padding: 0.75rem;
+  border: 1px solid #f2d28a;
+  border-radius: 0.5rem;
+  color: #704d00;
+  background: #fff8e6;
+  font-size: 0.875rem;
+}
+
+.planner-block-rule-hint {
+  margin: 0;
+  padding: 0.75rem;
+  border: 1px solid #dbe3ec;
+  border-radius: 0.5rem;
+  color: #475569;
+  background: #f8fafc;
+  font-size: 0.875rem;
+}
+
 .planner-modal-footer {
   display: flex;
   justify-content: flex-end;

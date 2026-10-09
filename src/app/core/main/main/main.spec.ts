@@ -14,6 +14,8 @@ import { CoatendPlannerModel } from '../../../models/components/planner/CoatendP
 import { Activity } from '../../../models/components/Activities';
 import { FeedbackService } from '../../../services/feedback';
 import { PlannerExportService } from '../../../services/planner-export';
+import { PlanningBlockService } from '../../../services/planning-block';
+import { HttpErrorResponse } from '@angular/common/http';
 
 describe('Main', () => {
   let component: Main;
@@ -35,6 +37,11 @@ describe('Main', () => {
         { provide: TimelineService, useValue: { getAll: () => of([]) } },
         { provide: TimelineMutationService, useValue: { update: () => of({}) } },
         { provide: DeveloperService, useValue: { getAll: () => of([]) } },
+        { provide: PlanningBlockService, useValue: {
+          getAll: () => of([]),
+          create: () => of({ id: 'b1', conflictingActivityIds: [] }),
+          update: () => of({ id: 'b1', conflictingActivityIds: [] })
+        } },
         { provide: PlannerExportService, useValue: { export: () => of(new Blob(['xlsx'])) } }
       ]
     }).compileComponents();
@@ -46,6 +53,121 @@ describe('Main', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  it('should reject blocked activity creation and editing before sending requests', () => {
+    component.blocks = [{ id: 'b1', type: 'DEPENDENCY', coatendId: 'c1', startDate: '2026-10-08',
+      endDate: '2026-10-10', conflictingActivityIds: [] }];
+    const create = vi.fn();
+    Object.assign(TestBed.inject(TimelineService), { create });
+    const update = vi.spyOn(TestBed.inject(TimelineMutationService), 'update');
+    const warning = vi.spyOn(TestBed.inject(FeedbackService), 'warning');
+    const item = { type: 'activity' as const, coatendId: 'c1', activity: Activity.SWAP,
+      startDate: '2026-10-10', endDate: '2026-10-11' };
+    component.createPlannerItem(item);
+    component.createPlannerItem({ ...item, activityId: 'a1' });
+    expect(create).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+    expect(warning).toHaveBeenCalledWith(expect.stringContaining('impedida por um bloqueio'));
+  });
+
+  it('should create working periods atomically and ignore blocks on excluded days', () => {
+    const createBatch = vi.fn(() => of([]));
+    const create = vi.fn(() => of({}));
+    Object.assign(TestBed.inject(TimelineService), { createBatch, create });
+    component.blocks = [{ id: 'b1', type: 'DEPENDENCY', coatendId: 'c1', startDate: '2026-10-10',
+      endDate: '2026-10-12', conflictingActivityIds: [] }];
+    component.createPlannerItem({ type: 'activity', coatendId: 'c1', activity: Activity.SWAP,
+      startDate: '2026-10-09', endDate: '2026-10-15', includeWeekends: false });
+    expect(createBatch).toHaveBeenCalledWith('c1', [
+      { activity: Activity.SWAP, startDate: '2026-10-09', endDate: '2026-10-09', developerId: null },
+      { activity: Activity.SWAP, startDate: '2026-10-13', endDate: '2026-10-15', developerId: null }
+    ]);
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('should include every day when selected and avoid requests when there are no working days', () => {
+    const createBatch = vi.fn(() => of([]));
+    const create = vi.fn(() => of({}));
+    Object.assign(TestBed.inject(TimelineService), { createBatch, create });
+    const item = { type: 'activity' as const, coatendId: 'c1', activity: Activity.SWAP,
+      startDate: '2026-10-09', endDate: '2026-10-15' };
+    component.createPlannerItem({ ...item, includeWeekends: true });
+    expect(create).toHaveBeenCalledWith('c1', {
+      activity: Activity.SWAP, startDate: item.startDate, endDate: item.endDate, developerId: null
+    });
+    component.createPlannerItem({ ...item, startDate: '2026-10-10', endDate: '2026-10-12', includeWeekends: false });
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(createBatch).not.toHaveBeenCalled();
+  });
+
+  it('should create a global block without sending the selected coatend', () => {
+    const create = vi.spyOn(TestBed.inject(PlanningBlockService), 'create');
+    component.createPlannerItem({
+      type: 'block', blockType: 'CORPORATE', coatendId: 'c1', startDate: '2026-10-08', endDate: '2026-10-10'
+    });
+    expect(create).toHaveBeenCalledWith({
+      type: 'CORPORATE', coatendId: null, startDate: '2026-10-08', endDate: '2026-10-10'
+    });
+  });
+
+  it('should edit a dependency block and warn about preserved activity conflicts', () => {
+    const update = vi.spyOn(TestBed.inject(PlanningBlockService), 'update')
+      .mockReturnValue(of({ id: 'b1', type: 'DEPENDENCY', coatendId: 'c1', startDate: '2026-10-08',
+        endDate: '2026-10-10', conflictingActivityIds: ['a1'] }));
+    const warning = vi.spyOn(TestBed.inject(FeedbackService), 'warning');
+    component.createPlannerItem({
+      type: 'block', blockId: 'b1', blockType: 'DEPENDENCY', coatendId: 'c1', startDate: '2026-10-08', endDate: '2026-10-10'
+    });
+    expect(update).toHaveBeenCalledWith('b1', {
+      type: 'DEPENDENCY', coatendId: 'c1', startDate: '2026-10-08', endDate: '2026-10-10'
+    });
+    expect(warning).toHaveBeenCalledWith(expect.stringContaining('1 atividade(s) em conflito'));
+  });
+
+  it('should render corporate blocks on all rows and dependency blocks only on their coatend', () => {
+    component.blocks = [
+      { id: 'global', type: 'CORPORATE', coatendId: null, startDate: '2026-10-08', endDate: '2026-10-10', conflictingActivityIds: ['a1'] },
+      { id: 'local', type: 'DEPENDENCY', coatendId: 'c1', startDate: '2026-10-09', endDate: '2026-10-09', conflictingActivityIds: [] }
+    ];
+    const rows = component.buildPlannerData([
+      { id: 'a1', activity: Activity.SWAP, coatendId: 'c1', startDate: '2026-10-07', endDate: '2026-10-09',
+        performerName: 'Swap', performerColor: '#dc3545' }
+    ], [
+      { id: 'c1', description: 'First', coatendNumber: 1 },
+      { id: 'c2', description: 'Second', coatendNumber: 2 }
+    ], ['2026-10-07', '2026-10-08', '2026-10-09', '2026-10-11']);
+    expect(rows[0].cells[0].entries[0].hasConflict).toBe(false);
+    expect(rows[0].cells[1].entries.find(entry => entry.id === 'a1')?.hasConflict).toBe(true);
+    expect(rows[0].cells[2].entries.map(entry => entry.id)).toEqual(['a1', 'global', 'local']);
+    expect(rows[1].cells[2].entries.map(entry => entry.id)).toEqual(['global']);
+    expect(rows[1].cells[2].entries[0].hasConflict).toBe(false);
+    expect(rows[0].cells[3].entries).toEqual([]);
+  });
+
+  it('should load global blocks even when planning structures are empty', () => {
+    vi.spyOn(TestBed.inject(PlanningBlockService), 'getAll').mockReturnValue(of([
+      { id: 'b1', type: 'CORPORATE', coatendId: null, startDate: '2026-10-08', endDate: '2026-10-10', conflictingActivityIds: [] }
+    ]));
+    component.loadPlannerData();
+    expect(component.blocks[0].id).toBe('b1');
+    const hierarchy = component.buildPlaceholderHierarchy(['2026-10-08']);
+    expect(hierarchy[0].sprints[0].coatends[0].cells[0].entries[0].blockType).toBe('CORPORATE');
+  });
+
+  it('should surface the API reason when an activity is blocked', () => {
+    vi.spyOn(TestBed.inject(TimelineMutationService), 'update').mockReturnValue(throwError(() => new HttpErrorResponse({
+      status: 400, error: { message: 'Atividade impedida por bloqueio CORPORATE.' }
+    })));
+    const feedback = vi.spyOn(TestBed.inject(FeedbackService), 'error');
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      component.createPlannerItem({ type: 'activity', activityId: 'a1', coatendId: 'c1', activity: Activity.SWAP,
+        startDate: '2026-10-08', endDate: '2026-10-09' });
+      expect(feedback).toHaveBeenCalledWith('Atividade impedida por bloqueio CORPORATE.');
+    } finally {
+      log.mockRestore();
+    }
   });
 
   it('should open export options using the current navigated window', () => {

@@ -14,14 +14,19 @@ import {
   PlannerPlaceholderType
 } from '../../../models/components/planner/PlannerPlaceholderSubmission';
 import { PlannerEntries } from '../../../models/components/planner/PlannerEntries';
+import { getWeekendDayName } from '../../../shared/utils/planner-dates';
+import { PlanningBlock } from '../../../models/components/planner/PlanningBlock';
+import { TimelineModel } from '../../../models/timeline/TimelineModel';
+import { buildPlannerBlockEntries } from '../../../shared/utils/planner-blocks';
 
 @Component({
   selector: 'app-planner',
   imports: [CommonModule, PlannerPlaceholderActions],
   templateUrl: './planner.html',
-  styleUrl: './planner.scss',
+  styleUrls: ['./planner.scss'],
 })
 export class Planner {
+  readonly weekendDayName = getWeekendDayName;
 
   @ViewChild('placeholderActions') placeholderActions?: PlannerPlaceholderActions;
   @Output() placeholderSubmitted = new EventEmitter<PlannerPlaceholderSubmission>();
@@ -36,6 +41,41 @@ export class Planner {
   @Input() quarters: QuarterSummary[] = [];
   @Input() sprints: SprintSummary[] = [];
   @Input() coatends: CoatendSummary[] = [];
+  @Input() blocks: PlanningBlock[] = [];
+  @Input() timeline: TimelineModel[] = [];
+  blocksExpanded = false;
+
+  get conflictingActivityCount(): number {
+    return new Set(this.blocks.flatMap(block => block.conflictingActivityIds)).size;
+  }
+
+  blockScopeLabel(block: PlanningBlock): string {
+    if (block.type === 'CORPORATE') {
+      return 'Todo o planejamento';
+    }
+    const coatend = this.coatends.find(item => item.id === block.coatendId);
+    return coatend ? `${coatend.coatendNumber} - ${coatend.description}` : `Coatend ${block.coatendId}`;
+  }
+
+  openBlockCreation(): void {
+    this.openPlaceholder({ type: 'block', startDate: this.days[0] });
+  }
+
+  openBlockEditor(block: PlanningBlock): void {
+    this.openPlaceholder({
+      type: 'block', blockId: block.id, blockType: block.type,
+      coatendId: block.coatendId ?? undefined,
+      startDate: block.startDate, endDate: block.endDate
+    });
+  }
+
+  globalBlockEntries(day: string): PlannerEntries[] {
+    return buildPlannerBlockEntries(this.blocks, day, null, this.timeline);
+  }
+
+  entryId(_index: number, entry: PlannerEntries): string {
+    return entry.id;
+  }
 
   isPlaceholderHeader(header: PlannerHeader, type: PlannerPlaceholderType): boolean {
     return header.id.toLowerCase().startsWith(`placeholder-${type}`);
@@ -84,6 +124,14 @@ export class Planner {
   }
 
   openActivityEditor(entry: PlannerEntries, coatendId: string | null): void {
+    if (entry.blockType) {
+      this.placeholderActions?.open({
+        type: 'block', blockId: entry.id, blockType: entry.blockType,
+        startDate: entry.startDate, endDate: entry.endDate,
+        coatendId: entry.blockType === 'DEPENDENCY' ? coatendId ?? undefined : undefined
+      });
+      return;
+    }
     if (!coatendId) {
       return;
     }
@@ -113,6 +161,17 @@ export class Planner {
     };
 
     return map[activity] || activity.substring(0, 2);
+  }
+
+  entryLabel(entry: PlannerEntries): string {
+    return entry.blockType === 'CORPORATE' ? 'BC'
+      : entry.blockType === 'DEPENDENCY' ? 'BD' : this.getShortActivity(entry.activity);
+  }
+
+  entryTitle(entry: PlannerEntries): string {
+    const label = entry.blockType === 'CORPORATE' ? 'bloqueio corporativo (global)'
+      : entry.blockType === 'DEPENDENCY' ? 'bloqueio de dependência' : 'atividade: ' + entry.activity;
+    return 'Editar ' + label + (entry.hasConflict ? ' — conflito com bloqueio' : '');
   }
 
   safeColor(color?: string): string {

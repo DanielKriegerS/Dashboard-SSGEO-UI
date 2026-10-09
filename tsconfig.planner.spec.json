@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.spec.json",
+  "include": [
+    "src/**/*.d.ts",
+    "src/app/shared/utils/planner-dates.spec.ts",
+    "src/app/core/layout/planner-placeholder-actions/planner-placeholder-actions.spec.ts",
+    "src/app/core/layout/planner/planner.spec.ts",
+    "src/app/core/main/main/main.spec.ts",
+    "src/app/services/planning-block.spec.ts",
+    "src/app/shared/utils/planner-blocks.spec.ts"
+  ]
+}

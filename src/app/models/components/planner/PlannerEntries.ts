@@ -1,3 +1,5 @@
+import { BlockType } from './PlanningBlock';
+
 export interface PlannerEntries{
     id: string;
     activity: string;
@@ -8,4 +10,6 @@ export interface PlannerEntries{
     developerColor?: string;
     performerName: string;
     performerColor: string;
+    blockType?: BlockType;
+    hasConflict?: boolean;
   }

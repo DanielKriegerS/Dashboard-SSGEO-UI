@@ -16,6 +16,9 @@ import {
   requiresActivityDeveloper
 } from '../../../models/components/Activities';
 import { DeveloperService } from '../../../services/developer-service';
+import { BlockType, PlanningBlock } from '../../../models/components/planner/PlanningBlock';
+import { getActivityBlockingBlocks } from '../../../shared/utils/planner-blocks';
+import { dateRangeIncludesWeekend, getWeekendDayName, getActivityDateRanges } from '../../../shared/utils/planner-dates';
 
 @Component({
   selector: 'app-planner-placeholder-actions',
@@ -29,16 +32,19 @@ export class PlannerPlaceholderActions {
   @Input() quarters: QuarterSummary[] = [];
   @Input() sprints: SprintSummary[] = [];
   @Input() coatends: CoatendSummary[] = [];
+  @Input() blocks: PlanningBlock[] = [];
   @Output() submitted = new EventEmitter<PlannerPlaceholderSubmission>();
 
   request: PlannerPlaceholderRequest | null = null;
   description = '';
   startDate = '';
   endDate = '';
+  includeWeekends = false;
   coatendNumber: number | null = null;
   quarterId = '';
   sprintId = '';
   activity: Activity = Activity.DEVELOPMENT;
+  blockType: BlockType = 'CORPORATE';
   developerId = '';
   coatendId = '';
   developers: DeveloperModel[] = [];
@@ -62,7 +68,7 @@ export class PlannerPlaceholderActions {
   }
 
   get isEditing(): boolean {
-    return Boolean(this.request?.entityId || this.request?.activityId);
+    return Boolean(this.request?.entityId || this.request?.activityId || this.request?.blockId);
   }
 
   get developerRequired(): boolean {
@@ -77,12 +83,44 @@ export class PlannerPlaceholderActions {
     return getActivityFixedExecutor(this.activity);
   }
 
+  get activityWeekendWarning(): string {
+    if (this.request?.type !== 'activity') {
+      return '';
+    }
+
+    if (!this.isEditingActivity && !this.includeWeekends) {
+      return '';
+    }
+    const weekend = getWeekendDayName(this.startDate);
+    if (weekend) {
+      return `A data início é ${weekend.toLowerCase()}. Atividades no fim de semana são permitidas; confirme se as datas estão corretas.`;
+    }
+    return dateRangeIncludesWeekend(this.startDate, this.endDate)
+      ? 'O período inclui sábado ou domingo. Atividades no fim de semana são permitidas; confirme se as datas estão corretas.'
+      : '';
+  }
+
+  get blockingActivityBlocks(): PlanningBlock[] {
+    if (this.request?.type !== 'activity') {
+      return [];
+    }
+    const ranges = getActivityDateRanges(this.startDate, this.endDate, this.isEditingActivity || this.includeWeekends);
+    return this.blocks.filter(block => ranges.some(range => getActivityBlockingBlocks(
+      [block], this.activity, this.coatendId, range.startDate, range.endDate
+    ).length > 0));
+  }
+
+  get hasActivityDates(): boolean {
+    return getActivityDateRanges(this.startDate, this.endDate, this.isEditingActivity || this.includeWeekends).length > 0;
+  }
+
   get itemName(): string {
     switch (this.request?.type) {
       case 'quarter': return 'Quarter';
       case 'sprint': return 'Sprint';
       case 'coatend': return 'Coatend';
       case 'activity': return 'Atividade';
+      case 'block': return 'Bloqueio';
       default: return 'Item';
     }
   }
@@ -100,7 +138,13 @@ export class PlannerPlaceholderActions {
       case 'coatend':
         return this.sprints.some(sprint => sprint.id === this.sprintId);
       case 'activity':
-        return this.coatends.some(coatend => coatend.id === this.coatendId);
+        return this.coatends.some(coatend => coatend.id === this.coatendId)
+          && this.hasActivityDates
+          && !this.blockingActivityBlocks.length;
+      case 'block':
+        return this.isValidDate(this.startDate) && this.isValidDate(this.endDate)
+          && this.startDate <= this.endDate
+          && (this.blockType === 'CORPORATE' || this.coatends.some(coatend => coatend.id === this.coatendId));
       default:
         return false;
     }
@@ -121,6 +165,7 @@ export class PlannerPlaceholderActions {
     this.description = request.description ?? '';
     this.startDate = this.normalizeDate(request.startDate);
     this.endDate = this.normalizeDate(request.endDate);
+    this.includeWeekends = false;
     this.coatendNumber = request.coatendNumber ?? null;
     this.quarterId = request.quarterId ??
       (this.quarters.length === 1 ? this.quarters[0].id : '');
@@ -130,6 +175,7 @@ export class PlannerPlaceholderActions {
       (this.coatends.length === 1 ? this.coatends[0].id : '');
     this.activity = this.activities.find(activity => activity === request.activity) ??
       Activity.DEVELOPMENT;
+    this.blockType = request.blockType ?? 'CORPORATE';
     this.developerId = this.developerRequired ? request.developerId ?? '' : '';
     this.developerLoadError = '';
 
@@ -140,6 +186,16 @@ export class PlannerPlaceholderActions {
 
   close(): void {
     this.request = null;
+  }
+
+  changeRecordType(type: 'activity' | 'block'): void {
+    if (!this.request || this.isEditing || (type !== 'activity' && type !== 'block')) {
+      return;
+    }
+    this.request = { ...this.request, type, coatendId: this.coatendId || undefined };
+    if (type === 'activity') {
+      this.loadDevelopers();
+    }
   }
 
   closeOnBackdrop(event: MouseEvent): void {
@@ -192,12 +248,21 @@ export class PlannerPlaceholderActions {
         break;
       case 'activity':
         submission.activity = this.activity;
+        if (!this.isEditingActivity) {
+          submission.includeWeekends = this.includeWeekends;
+        }
         submission.startDate = this.startDate;
         submission.endDate = this.endDate;
         submission.developerId = this.developerRequired
           ? this.developerId || undefined
           : undefined;
         submission.coatendId = this.coatendId;
+        break;
+      case 'block':
+        submission.blockType = this.blockType;
+        submission.startDate = this.startDate;
+        submission.endDate = this.endDate;
+        submission.coatendId = this.blockType === 'DEPENDENCY' ? this.coatendId : undefined;
         break;
     }
 

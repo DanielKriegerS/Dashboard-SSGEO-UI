@@ -20,6 +20,10 @@ export class TimelineService {
     return this.http.get<TimelineModel[]>(`${API_URL}/coatends/${coatendId}/timeline`);
   }
 
+  createBatch(coatendId: string, payload: TimelineCreateModel[]): Observable<TimelineModel[]> {
+    return this.http.post<TimelineModel[]>(`${API_URL}/coatends/${coatendId}/timeline/batch`, payload);
+  }
+
   getAll(): Observable<TimelineModel[]> {
     return this.http.get<TimelineModel[]>(`${API_URL}/timeline`);
   }

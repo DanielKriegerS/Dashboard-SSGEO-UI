@@ -6,8 +6,49 @@
     [quarters]="quarters"
     [sprints]="sprints"
     [coatends]="coatends"
+    [blocks]="blocks"
     (submitted)="placeholderSubmitted.emit($event)">
   </app-planner-placeholder-actions>
+
+  <div class="planner-block-toolbar">
+    <button type="button" class="btn btn-outline-primary" (click)="openBlockCreation()">
+      Adicionar bloqueio
+    </button>
+    <button
+      type="button"
+      class="btn btn-outline-secondary"
+      [attr.aria-expanded]="blocksExpanded"
+      aria-controls="planner-block-list"
+      (click)="blocksExpanded = !blocksExpanded">
+      Bloqueios ({{ blocks.length }})
+    </button>
+    <span class="planner-block-legend">BC: corporativo · BD: dependência · !: conflito</span>
+  </div>
+  <p *ngIf="conflictingActivityCount" class="planner-block-conflict-notice" role="status">
+    {{ conflictingActivityCount }} atividade(s) em conflito com bloqueios.
+    As atividades foram preservadas; edite suas datas ou o bloqueio para replanejar.
+  </p>
+  <div id="planner-block-list" class="planner-block-list" [hidden]="!blocksExpanded">
+    <p *ngIf="!blocks.length" class="mb-0">Nenhum bloqueio cadastrado.</p>
+    <button
+      *ngFor="let block of blocks"
+      type="button"
+      class="planner-block-list-item"
+      (click)="openBlockEditor(block)">
+      <strong>{{ block.type === 'CORPORATE' ? 'BC — Corporativo' : 'BD — Dependência' }}</strong>
+      <span>{{ blockScopeLabel(block) }}</span>
+      <span>{{ block.startDate | date:'dd/MM/yyyy' }} até {{ block.endDate | date:'dd/MM/yyyy' }}</span>
+      <span *ngIf="block.conflictingActivityIds.length" class="planner-block-list-conflict">
+        ! {{ block.conflictingActivityIds.length }} atividade(s) em conflito
+      </span>
+      <span class="planner-block-edit-hint">Editar bloqueio</span>
+    </button>
+  </div>
+
+  <p class="planner-weekend-legend">
+    <span class="planner-weekend-swatch" aria-hidden="true"></span>
+    Sábados e domingos destacados. Atividades continuam permitidas nesses dias.
+  </p>
 
   <div class="planner-table-container" role="region" aria-label="Tabela do planner" tabindex="0">
     <table class="table table-bordered text-center planner-table">
@@ -72,8 +113,13 @@
           </th>
         </tr>
         <tr>
-          <th *ngFor="let day of days" scope="col" class="planner-day-header">
+          <th
+            *ngFor="let day of days"
+            scope="col"
+            class="planner-day-header"
+            [class.planner-weekend-header]="!!weekendDayName(day)">
             {{ day | date:'dd/MM' }}
+            <span *ngIf="weekendDayName(day) as weekend" class="planner-weekend-label">{{ weekend }}</span>
           </th>
         </tr>
       </thead>
@@ -106,9 +152,10 @@
               <td
                 *ngFor="let cell of row.cells"
                 class="planner-day-cell planner-add-activity-cell"
+                [class.planner-weekend-cell]="!!weekendDayName(cell.date)"
                 tabindex="0"
-                [attr.aria-label]="'Adicionar atividade em ' + (cell.date | date:'dd/MM/yyyy')"
-                title="Clique no espaço da célula para adicionar uma atividade"
+                [attr.aria-label]="'Adicionar atividade ou bloqueio em ' + (cell.date | date:'dd/MM/yyyy') + (weekendDayName(cell.date) ? ' — ' + weekendDayName(cell.date) : '')"
+                [title]="(weekendDayName(cell.date) ? weekendDayName(cell.date) + ': ' : '') + 'Adicionar atividade ou bloqueio'"
                 (click)="openActivityCreation(cell.date, row.coatendId)"
                 (keydown)="onActivityCellKeydown($event, cell.date, row.coatendId)">
                 <div class="planner-cell-content">
@@ -116,12 +163,14 @@
                     *ngFor="let entry of cell.entries"
                     type="button"
                     class="px-1 rounded planner-entry"
+                    [class.planner-block-entry]="!!entry.blockType"
+                    [class.planner-conflict-entry]="!!entry.hasConflict"
                     [style.background-color]="safeColor(entry.performerColor)"
                     [style.color]="getTextColor(entry.performerColor)"
-                    [title]="'Editar atividade: ' + entry.activity"
-                    [attr.aria-label]="'Editar atividade: ' + entry.activity"
+                    [title]="entryTitle(entry)"
+                    [attr.aria-label]="entryTitle(entry)"
                     (click)="$event.stopPropagation(); openActivityEditor(entry, row.coatendId)">
-                    {{ getShortActivity(entry.activity) }}
+                    {{ entryLabel(entry) }}{{ entry.hasConflict ? ' !' : '' }}
                   </button>
                 </div>
               </td>
@@ -140,11 +189,26 @@
               <td
                 *ngFor="let day of days"
                 class="planner-day-cell planner-add-activity-cell"
+                [class.planner-weekend-cell]="!!weekendDayName(day)"
                 tabindex="0"
-                [attr.aria-label]="'Adicionar atividade em ' + (day | date:'dd/MM/yyyy')"
-                title="Adicionar atividade"
+                [attr.aria-label]="'Adicionar atividade ou bloqueio em ' + (day | date:'dd/MM/yyyy') + (weekendDayName(day) ? ' — ' + weekendDayName(day) : '')"
+                [title]="(weekendDayName(day) ? weekendDayName(day) + ': ' : '') + 'Adicionar atividade ou bloqueio'"
                 (click)="openActivityCreation(day, null)"
                 (keydown)="onActivityCellKeydown($event, day, null)">
+                <div class="planner-cell-content">
+                  <button
+                    *ngFor="let entry of globalBlockEntries(day); trackBy: entryId"
+                    type="button"
+                    class="px-1 rounded planner-entry planner-block-entry"
+                    [class.planner-conflict-entry]="!!entry.hasConflict"
+                    [style.background-color]="safeColor(entry.performerColor)"
+                    [style.color]="getTextColor(entry.performerColor)"
+                    [title]="entryTitle(entry)"
+                    [attr.aria-label]="entryTitle(entry)"
+                    (click)="$event.stopPropagation(); openActivityEditor(entry, null)">
+                    {{ entryLabel(entry) }}{{ entry.hasConflict ? ' !' : '' }}
+                  </button>
+                </div>
               </td>
             </tr>
           </ng-container>

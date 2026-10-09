@@ -32,6 +32,11 @@ import { requiresActivityDeveloper } from '../../../models/components/Activities
 import { PlannerExportService } from '../../../services/planner-export';
 import { PlannerExportRequest } from '../../../models/components/planner/PlannerExportRequest';
 import { PlannerExportOptions } from '../../layout/planner-export-options/planner-export-options';
+import { PlanningBlockService } from '../../../services/planning-block';
+import { BlockRequest, PlanningBlock } from '../../../models/components/planner/PlanningBlock';
+import { buildPlannerBlockEntries, getActivityBlockingBlocks } from '../../../shared/utils/planner-blocks';
+import { HttpErrorResponse } from '@angular/common/http';
+import { getActivityDateRanges } from '../../../shared/utils/planner-dates';
 
 @Component({
   selector: 'app-main',
@@ -43,6 +48,7 @@ export class Main implements OnInit{
   @ViewChild(PlannerExportOptions) exportOptions?: PlannerExportOptions;
   private readonly document = inject(DOCUMENT);
   private readonly plannerExportService = inject(PlannerExportService);
+  private readonly blockService = inject(PlanningBlockService);
   exporting = false;
   plannerData: PlannerRow[] = [];
   plannerHierarchy: PlannerQuarterGroup[] = [];
@@ -54,6 +60,7 @@ export class Main implements OnInit{
   sprintHeaders: PlannerHeader[] = [];
 
   timeline: TimelineModel[] = [];
+  blocks: PlanningBlock[] = [];
   quarters: QuarterSummary[] = [];
   sprints: SprintSummary[] = [];
   coatends: CoatendPlannerModel[] = [];
@@ -148,7 +155,8 @@ export class Main implements OnInit{
     forkJoin({
       quarters: this.quarterService.getAll(),
       sprints: this.sprintService.getAll(),
-      coatendSummaries: this.coatendService.getAll()
+      coatendSummaries: this.coatendService.getAll(),
+      blocks: this.blockService.getAll()
     }).pipe(
       switchMap(structure => {
         const initialData = {
@@ -191,6 +199,7 @@ export class Main implements OnInit{
         this.coatendSummaries = res.coatendSummaries;
         this.coatends = res.coatends;
         this.timeline = res.timeline;
+        this.blocks = res.blocks;
 
         this.mode = this.resolvePlannerMode(
           this.quarters,
@@ -238,7 +247,36 @@ export class Main implements OnInit{
         }
 
         break;
+      case 'block':
+        this.saveBlockFromPlanner(item);
+        break;
     }
+  }
+
+  private saveBlockFromPlanner(item: PlannerPlaceholderSubmission): void {
+    if (!item.blockType || !this.hasValidDateRange(item.startDate, item.endDate)
+      || (item.blockType === 'DEPENDENCY' && !item.coatendId)) {
+      this.feedback.warning('Informe o tipo, um período válido e o COATEND para dependência.');
+      return;
+    }
+    const payload: BlockRequest = {
+      type: item.blockType,
+      startDate: item.startDate!,
+      endDate: item.endDate!,
+      coatendId: item.blockType === 'DEPENDENCY' ? item.coatendId! : null
+    };
+    const operation = item.blockId ? this.blockService.update(item.blockId, payload) : this.blockService.create(payload);
+    operation.subscribe({
+      next: block => {
+        if (block.conflictingActivityIds.length) {
+          this.feedback.warning(`Bloqueio salvo. ${block.conflictingActivityIds.length} atividade(s) em conflito; replanejamento necessário.`);
+        } else {
+          this.feedback.success('Bloqueio salvo com sucesso!');
+        }
+        this.loadPlannerData();
+      },
+      error: error => this.onPlannerItemSaveFailed('bloqueio', error, item.blockId ? 'atualizar' : 'criar')
+    });
   }
 
   private updateStructureFromPlanner(item: PlannerPlaceholderSubmission): void {
@@ -406,6 +444,10 @@ export class Main implements OnInit{
       return;
     }
 
+    if (this.rejectBlockedActivity(item)) {
+      return;
+    }
+
     const payload: TimelineCreateModel = {
       activity: item.activity,
       startDate: item.startDate!,
@@ -413,7 +455,15 @@ export class Main implements OnInit{
       developerId: requiresActivityDeveloper(item.activity) ? item.developerId : null
     };
 
-    this.timelineService.create(item.coatendId, payload).subscribe({
+    const ranges = getActivityDateRanges(payload.startDate, payload.endDate, item.includeWeekends !== false);
+    if (!ranges.length) {
+      this.feedback.warning('O período não contém dias úteis.');
+      return;
+    }
+    const creation: Observable<TimelineModel | TimelineModel[]> = item.includeWeekends === false
+      ? this.timelineService.createBatch(item.coatendId, ranges.map(range => ({ ...payload, ...range })))
+      : this.timelineService.create(item.coatendId, payload);
+    creation.subscribe({
       next: () => this.onPlannerItemSaved('Atividade criada com sucesso!'),
       error: error => this.onPlannerItemSaveFailed('Atividade', error)
     });
@@ -428,6 +478,10 @@ export class Main implements OnInit{
       !this.hasValidDateRange(item.startDate, item.endDate)
     ) {
       this.feedback.warning('Informe a atividade e um período válido.');
+      return;
+    }
+
+    if (this.rejectBlockedActivity(item)) {
       return;
     }
 
@@ -448,6 +502,19 @@ export class Main implements OnInit{
     return Boolean(startDate && endDate && startDate <= endDate);
   }
 
+  private rejectBlockedActivity(item: PlannerPlaceholderSubmission): boolean {
+    const ranges = getActivityDateRanges(item.startDate ?? '', item.endDate ?? '',
+      Boolean(item.activityId) || item.includeWeekends !== false);
+    const conflicts = ranges.flatMap(range => getActivityBlockingBlocks(
+      this.blocks, item.activity ?? '', item.coatendId ?? '', range.startDate, range.endDate
+    ));
+    if (!conflicts.length) {
+      return false;
+    }
+    this.feedback.warning('A atividade está impedida por um bloqueio. Escolha outras datas ou edite o bloqueio para replanejar.');
+    return true;
+  }
+
   private onPlannerItemSaved(message: string): void {
     this.feedback.success(message);
     this.loadPlannerData();
@@ -459,6 +526,10 @@ export class Main implements OnInit{
     action: 'criar' | 'atualizar' = 'criar'
   ): void {
     console.error(`Erro ao ${action} ${itemName} pelo planner:`, error);
+    if (error instanceof HttpErrorResponse && error.status === 400 && typeof error.error?.message === 'string') {
+      this.feedback.error(error.error.message);
+      return;
+    }
     this.feedback.error(`Não foi possível ${action} ${itemName}. Tente novamente.`);
   }
 
@@ -674,7 +745,7 @@ export class Main implements OnInit{
       quarterId: null,
       cells: days.map(day => ({
         date: day,
-        entries: []
+        entries: this.buildBlockEntries(day, null)
       }))
     };
 
@@ -897,8 +968,12 @@ export class Main implements OnInit{
           developerName: t.developerName,
           developerColor: t.developerColor,          
           performerName: t.performerName,
-          performerColor: t.performerColor
+          performerColor: t.performerColor,
+          hasConflict: this.blocks.some(block => block.conflictingActivityIds.includes(t.id)
+            && dayKey >= this.toDateKey(block.startDate) && dayKey <= this.toDateKey(block.endDate))
         }));
+
+        entries.push(...this.buildBlockEntries(day, coatend.id, timeline));
 
         return {
           date: day,
@@ -914,6 +989,10 @@ export class Main implements OnInit{
     }
 
     return rows;
+  }
+
+  private buildBlockEntries(day: string, coatendId: string | null, timeline = this.timeline): PlannerEntries[] {
+    return buildPlannerBlockEntries(this.blocks, day, coatendId, timeline);
   }
 
  toDateKey(date: string): number {
