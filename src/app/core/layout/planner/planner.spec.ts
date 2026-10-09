@@ -59,6 +59,31 @@ describe('Planner', () => {
     expect(component.entryLabel({ ...entry, blockType: 'DEPENDENCY' })).toBe('BD');
   });
 
+  it('should render only the highest priority entry and reveal preserved records outside corporate dates', async () => {
+    await renderRow();
+    const cell = component.hierarchy[0].sprints[0].coatends[0].cells[1];
+    cell.entries.push({ id: 'bd', activity: '', blockType: 'DEPENDENCY', startDate: '2026-10-09',
+      endDate: '2026-10-09', performerName: 'Dependency', performerColor: '#b91c1c' });
+    cell.entries.push({ id: 'bc', activity: '', blockType: 'CORPORATE', startDate: '2026-10-09',
+      endDate: '2026-10-09', performerName: 'Corporate', performerColor: '#334155' });
+    fixture.changeDetectorRef.markForCheck();
+    await fixture.whenStable();
+    expect(fixture.nativeElement.querySelectorAll('.planner-entry')).toHaveLength(1);
+    const button: HTMLButtonElement = fixture.nativeElement.querySelector('.planner-entry');
+    expect(button.textContent.trim()).toBe('BC');
+    button.click();
+    expect(component.placeholderActions?.request?.blockId).toBe('bc');
+    expect(cell.entries).toHaveLength(3);
+    cell.entries = cell.entries.filter(entry => entry.id !== 'bc');
+    fixture.changeDetectorRef.markForCheck();
+    await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('.planner-entry').textContent.trim()).toBe('BD');
+    cell.entries = cell.entries.filter(entry => entry.id !== 'bd');
+    fixture.changeDetectorRef.markForCheck();
+    await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('.planner-entry').textContent.trim()).toBe('De');
+  });
+
   async function renderRow(days = ['2026-10-08', '2026-10-09']): Promise<void> {
     fixture.componentRef.setInput('days', days);
     fixture.componentRef.setInput('hierarchy', [{

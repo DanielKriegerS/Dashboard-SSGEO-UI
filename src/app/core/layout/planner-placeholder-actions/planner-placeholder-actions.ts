@@ -17,7 +17,8 @@ import {
 } from '../../../models/components/Activities';
 import { DeveloperService } from '../../../services/developer-service';
 import { BlockType, PlanningBlock } from '../../../models/components/planner/PlanningBlock';
-import { getActivityBlockingBlocks } from '../../../shared/utils/planner-blocks';
+import { getActivityBlockingBlocks, getBlockOccupancyConflicts } from '../../../shared/utils/planner-blocks';
+import { TimelineModel } from '../../../models/timeline/TimelineModel';
 import { dateRangeIncludesWeekend, getWeekendDayName, getActivityDateRanges } from '../../../shared/utils/planner-dates';
 
 @Component({
@@ -33,6 +34,7 @@ export class PlannerPlaceholderActions {
   @Input() sprints: SprintSummary[] = [];
   @Input() coatends: CoatendSummary[] = [];
   @Input() blocks: PlanningBlock[] = [];
+  @Input() timeline: TimelineModel[] = [];
   @Output() submitted = new EventEmitter<PlannerPlaceholderSubmission>();
 
   request: PlannerPlaceholderRequest | null = null;
@@ -110,6 +112,17 @@ export class PlannerPlaceholderActions {
     ).length > 0));
   }
 
+  get hasBlockOccupancyConflict(): boolean {
+    if (this.request?.type !== 'block') {
+      return false;
+    }
+    const conflicts = getBlockOccupancyConflicts(this.blocks, this.timeline, {
+      type: this.blockType, startDate: this.startDate, endDate: this.endDate,
+      coatendId: this.blockType === 'DEPENDENCY' ? this.coatendId : null
+    }, this.request.blockId);
+    return Boolean(conflicts.blocks.length || conflicts.activities.length);
+  }
+
   get hasActivityDates(): boolean {
     return getActivityDateRanges(this.startDate, this.endDate, this.isEditingActivity || this.includeWeekends).length > 0;
   }
@@ -144,6 +157,7 @@ export class PlannerPlaceholderActions {
       case 'block':
         return this.isValidDate(this.startDate) && this.isValidDate(this.endDate)
           && this.startDate <= this.endDate
+          && !this.hasBlockOccupancyConflict
           && (this.blockType === 'CORPORATE' || this.coatends.some(coatend => coatend.id === this.coatendId));
       default:
         return false;

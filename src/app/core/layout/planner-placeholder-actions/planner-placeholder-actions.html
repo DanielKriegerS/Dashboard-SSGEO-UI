@@ -147,11 +147,16 @@
         </ng-container>
 
         <ng-container *ngIf="currentRequest.type === 'block'">
+          @if (hasBlockOccupancyConflict) {
+            <p class="planner-modal-error" role="alert">
+              Já existe um bloqueio de prioridade igual ou superior nesse período.
+            </p>
+          }
           <p class="planner-block-rule-hint" role="note">
-            Bloqueios corporativos impedem Pré Swap e Swap em todo o planejamento.
+            Bloqueios corporativos impedem qualquer atividade em todo o planejamento.
             Bloqueios de dependência impedem qualquer atividade na Coatend selecionada.
-            As datas são inclusivas. Atividades existentes serão preservadas e sinalizadas
-            para replanejamento caso haja conflito.
+            As datas são inclusivas. BC prevalece sobre BD. Ambos removem atividades nos dias de conflito,
+            mantendo os dias fora do bloqueio. Bloqueios do mesmo tipo não podem se sobrepor.
           </p>
           <label class="planner-form-field">
             <span>Tipo de bloqueio</span>
@@ -243,7 +248,7 @@
             Não é possível salvar esta atividade no período escolhido:
             <ul class="mb-0">
               <li *ngFor="let block of blockingActivityBlocks">
-                Bloqueio {{ block.type === 'CORPORATE' ? 'corporativo (Pré Swap/Swap)' : 'de dependência (todas as atividades)' }}:
+                Bloqueio {{ block.type === 'CORPORATE' ? 'corporativo' : 'de dependência' }} (todas as atividades):
                 {{ block.startDate | date:'dd/MM/yyyy' }} até {{ block.endDate | date:'dd/MM/yyyy' }}.
               </li>
             </ul>

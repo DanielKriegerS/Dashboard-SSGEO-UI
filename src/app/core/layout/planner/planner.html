@@ -7,6 +7,7 @@
     [sprints]="sprints"
     [coatends]="coatends"
     [blocks]="blocks"
+    [timeline]="timeline"
     (submitted)="placeholderSubmitted.emit($event)">
   </app-planner-placeholder-actions>
 
@@ -128,7 +129,7 @@
                 (keydown)="onActivityCellKeydown($event, cell.date, row.coatendId)">
                 <div class="planner-cell-content">
                   <button
-                    *ngFor="let entry of cell.entries"
+                    *ngFor="let entry of visibleEntries(cell.entries); trackBy: entryId"
                     type="button"
                     class="px-1 rounded planner-entry"
                     [class.planner-block-entry]="!!entry.blockType"

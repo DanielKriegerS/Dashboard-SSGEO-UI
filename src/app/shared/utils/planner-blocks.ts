@@ -1,7 +1,6 @@
-import { PlanningBlock } from '../../models/components/planner/PlanningBlock';
+import { BlockRequest, PlanningBlock } from '../../models/components/planner/PlanningBlock';
 import { PlannerEntries } from '../../models/components/planner/PlannerEntries';
 import { TimelineModel } from '../../models/timeline/TimelineModel';
-import { Activity } from '../../models/components/Activities';
 
 export function blockAppliesToCoatend(block: PlanningBlock, coatendId: string | null): boolean {
   return block.type === 'CORPORATE' || Boolean(coatendId && block.coatendId
@@ -16,8 +15,32 @@ export function getActivityBlockingBlocks(
     return [];
   }
   return blocks.filter(block => blockAppliesToCoatend(block, coatendId)
-    && block.startDate.substring(0, 10) <= endDate && block.endDate.substring(0, 10) >= startDate
-    && (block.type === 'DEPENDENCY' || activity === Activity.PRE_SWAP || activity === Activity.SWAP));
+    && block.startDate.substring(0, 10) <= endDate && block.endDate.substring(0, 10) >= startDate);
+}
+
+export function getBlockOccupancyConflicts(
+  blocks: PlanningBlock[], timeline: TimelineModel[], request: BlockRequest, excludedBlockId?: string
+): { blocks: PlanningBlock[]; activities: TimelineModel[] } {
+  if (!request.startDate || !request.endDate || request.endDate < request.startDate
+    || (request.type === 'DEPENDENCY' && !request.coatendId)) {
+    return { blocks: [], activities: [] };
+  }
+  return {
+    blocks: blocks.filter(block => block.id !== excludedBlockId
+      && (request.type !== 'CORPORATE' || block.type === 'CORPORATE')
+      && (request.type === 'CORPORATE' || blockAppliesToCoatend(block, request.coatendId))
+      && block.startDate.substring(0, 10) <= request.endDate && block.endDate.substring(0, 10) >= request.startDate),
+    activities: []
+  };
+}
+
+export function getVisiblePlannerEntries(entries: PlannerEntries[]): PlannerEntries[] {
+  const corporate = entries.filter(entry => entry.blockType === 'CORPORATE');
+  if (corporate.length) {
+    return corporate;
+  }
+  const dependency = entries.filter(entry => entry.blockType === 'DEPENDENCY');
+  return dependency.length ? dependency : entries;
 }
 
 export function buildPlannerBlockEntries(

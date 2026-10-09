@@ -17,7 +17,7 @@ import { PlannerEntries } from '../../../models/components/planner/PlannerEntrie
 import { getWeekendDayName, getHolidayName, getNonWorkingDayLabel } from '../../../shared/utils/planner-dates';
 import { PlanningBlock } from '../../../models/components/planner/PlanningBlock';
 import { TimelineModel } from '../../../models/timeline/TimelineModel';
-import { buildPlannerBlockEntries } from '../../../shared/utils/planner-blocks';
+import { buildPlannerBlockEntries, getVisiblePlannerEntries } from '../../../shared/utils/planner-blocks';
 
 @Component({
   selector: 'app-planner',
@@ -29,6 +29,7 @@ export class Planner {
   readonly weekendDayName = getWeekendDayName;
   readonly holidayName = getHolidayName;
   readonly nonWorkingDayLabel = getNonWorkingDayLabel;
+  readonly visibleEntries = getVisiblePlannerEntries;
 
   @ViewChild('placeholderActions') placeholderActions?: PlannerPlaceholderActions;
   @Output() placeholderSubmitted = new EventEmitter<PlannerPlaceholderSubmission>();
@@ -49,7 +50,7 @@ export class Planner {
   plannerComponent?: Planner;
 
   globalBlockEntries(day: string): PlannerEntries[] {
-    return buildPlannerBlockEntries(this.blocks, day, null, this.timeline);
+    return getVisiblePlannerEntries(buildPlannerBlockEntries(this.blocks, day, null, this.timeline));
   }
 
   entryId(_index: number, entry: PlannerEntries): string {

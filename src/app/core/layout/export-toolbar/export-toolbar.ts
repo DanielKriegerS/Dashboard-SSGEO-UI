@@ -6,12 +6,12 @@ import {
   Input,
   ViewChild
 } from '@angular/core';
-import { finalize, tap } from 'rxjs';
+import { finalize, from, switchMap } from 'rxjs';
 import { PlannerDisplaySelection } from '../../../models/components/planner/PlannerDisplaySelection';
 import { PlannerExportRequest } from '../../../models/components/planner/PlannerExportRequest';
 import { FeedbackService } from '../../../services/feedback';
 import { PlannerExportService } from '../../../services/planner-export';
-import { PlannerExportOptions } from '../planner-export-options/planner-export-options';
+import { PlannerExportFileHandle, PlannerExportOptions } from '../planner-export-options/planner-export-options';
 import { PlannerExportContextService } from '../../../shared/services/planner-export-context';
 
 @Component({
@@ -63,15 +63,15 @@ export class ExportToolbar {
     );
   }
 
-  exportPlanner(request: PlannerExportRequest): void {
+  exportPlanner(selection: { request: PlannerExportRequest; destination: PlannerExportFileHandle | null }): void {
     if (this.exporting) {
       return;
     }
 
     this.exporting = true;
 
-    this.plannerExportService.export(request).pipe(
-      tap(blob => this.downloadPlannerFile(blob)),
+    this.plannerExportService.export(selection.request).pipe(
+      switchMap(blob => from(this.savePlannerFile(blob, selection.destination))),
       finalize(() => {
         this.exporting = false;
         this.cdr.markForCheck();
@@ -94,7 +94,19 @@ export class ExportToolbar {
     this.exportOptions?.close();
   }
 
-  private downloadPlannerFile(blob: Blob): void {
+  private async savePlannerFile(blob: Blob, destination: PlannerExportFileHandle | null): Promise<void> {
+    if (destination) {
+      const writable = await destination.createWritable();
+      try {
+        await writable.write(blob);
+        await writable.close();
+      } catch (error) {
+        await writable.abort?.();
+        throw error;
+      }
+      return;
+    }
+
     const url = URL.createObjectURL(blob);
     const link = this.document.createElement('a');
 

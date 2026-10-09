@@ -48,7 +48,7 @@ describe('PlannerPlaceholderActions', () => {
     expect(component.canSubmit).toBe(true);
   });
 
-  it('should allow non-swap activities through corporate blocks and other coatends through dependency blocks', () => {
+  it('should reject non-swap activities through corporate blocks but allow other dependency coatends', () => {
     component.coatends = [{ id: 'c1', description: 'Test', coatendNumber: 1 }];
     component.blocks = [
       { id: 'bc', type: 'CORPORATE', coatendId: null, startDate: '2026-10-08', endDate: '2026-10-10', conflictingActivityIds: [] },
@@ -56,9 +56,59 @@ describe('PlannerPlaceholderActions', () => {
     ];
     component.open({ type: 'activity', coatendId: 'c1', activity: Activity.DEVELOPMENT,
       developerId: 'd1', startDate: '2026-10-08', endDate: '2026-10-09' });
-    expect(component.canSubmit).toBe(true);
-    component.blocks[1].coatendId = 'c1';
     expect(component.canSubmit).toBe(false);
+    component.blocks = [component.blocks[1]];
+    expect(component.canSubmit).toBe(true);
+    component.blocks[0].coatendId = 'c1';
+    expect(component.canSubmit).toBe(false);
+  });
+
+  it('should allow dependency blocks over activities and submit removal to the backend', async () => {
+    component.coatends = [{ id: 'c1', description: 'Test', coatendNumber: 1 }];
+    component.timeline = [{ id: 'a1', coatendId: 'c1', activity: Activity.HOMOLOGATION,
+      startDate: '2026-10-09', endDate: '2026-10-09', performerName: 'TH', performerColor: '#123456' }];
+    component.open({ type: 'block', blockType: 'DEPENDENCY', coatendId: 'c1',
+      startDate: '2026-10-08', endDate: '2026-10-10' });
+    fixture.changeDetectorRef.markForCheck();
+    await fixture.whenStable();
+    expect(component.canSubmit).toBe(true);
+    expect(fixture.nativeElement.querySelector('[role="alert"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('button[type="submit"]').disabled).toBe(false);
+    const emit = vi.spyOn(component.submitted, 'emit');
+    component.submit();
+    expect(emit).toHaveBeenCalledWith(expect.objectContaining({ blockType: 'DEPENDENCY', coatendId: 'c1' }));
+    expect(component.request).toBeNull();
+  });
+
+  it('should enable corporate submission over dependency and activities without removing source records', async () => {
+    component.blocks = [{ id: 'bd', type: 'DEPENDENCY', coatendId: 'c1',
+      startDate: '2026-10-08', endDate: '2026-10-10', conflictingActivityIds: [] }];
+    component.timeline = [{ id: 'a1', coatendId: 'c1', activity: Activity.HOMOLOGATION,
+      startDate: '2026-10-09', endDate: '2026-10-09', performerName: 'TH', performerColor: '#123456' }];
+    component.open({ type: 'block', blockType: 'CORPORATE',
+      startDate: '2026-10-08', endDate: '2026-10-10' });
+    fixture.changeDetectorRef.markForCheck();
+    await fixture.whenStable();
+    expect(component.canSubmit).toBe(true);
+    expect(fixture.nativeElement.querySelector('button[type="submit"]').disabled).toBe(false);
+    expect(fixture.nativeElement.querySelector('[role="alert"]')).toBeNull();
+    const emit = vi.spyOn(component.submitted, 'emit');
+    component.submit();
+    expect(emit).toHaveBeenCalledWith(expect.objectContaining({ blockType: 'CORPORATE' }));
+    expect(component.timeline).toHaveLength(1);
+    expect(component.blocks).toHaveLength(1);
+  });
+
+  it('should exclude its own block when editing but preserve a previously assigned block', () => {
+    component.coatends = [{ id: 'c1', description: 'Test', coatendNumber: 1 }];
+    component.blocks = [{ id: 'b1', type: 'CORPORATE', coatendId: null,
+      startDate: '2026-10-08', endDate: '2026-10-10', conflictingActivityIds: [] }];
+    component.open({ type: 'block', blockType: 'DEPENDENCY', coatendId: 'c1',
+      startDate: '2026-10-08', endDate: '2026-10-10' });
+    expect(component.canSubmit).toBe(false);
+    component.open({ type: 'block', blockId: 'b1', blockType: 'CORPORATE',
+      startDate: '2026-10-08', endDate: '2026-10-10' });
+    expect(component.canSubmit).toBe(true);
   });
 
   it('should preserve the selected coatend when switching from dependency block to activity', () => {

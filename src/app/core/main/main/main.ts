@@ -31,7 +31,7 @@ import { PlannerDisplaySelection } from '../../../models/components/planner/Plan
 import { requiresActivityDeveloper } from '../../../models/components/Activities';
 import { PlanningBlockService } from '../../../services/planning-block';
 import { BlockRequest, PlanningBlock } from '../../../models/components/planner/PlanningBlock';
-import { buildPlannerBlockEntries, getActivityBlockingBlocks } from '../../../shared/utils/planner-blocks';
+import { buildPlannerBlockEntries, getActivityBlockingBlocks, getBlockOccupancyConflicts } from '../../../shared/utils/planner-blocks';
 import { HttpErrorResponse } from '@angular/common/http';
 import { getActivityDateRanges } from '../../../shared/utils/planner-dates';
 import { PlannerPlaceholderActions } from '../../layout/planner-placeholder-actions/planner-placeholder-actions';
@@ -232,14 +232,15 @@ export class Main implements OnInit, OnDestroy{
       endDate: item.endDate!,
       coatendId: item.blockType === 'DEPENDENCY' ? item.coatendId! : null
     };
+    const conflicts = getBlockOccupancyConflicts(this.blocks, this.timeline, payload, item.blockId);
+    if (conflicts.blocks.length) {
+      this.feedback.warning('Já existe um bloqueio de prioridade igual ou superior nessas células.');
+      return;
+    }
     const operation = item.blockId ? this.blockService.update(item.blockId, payload) : this.blockService.create(payload);
     operation.subscribe({
-      next: block => {
-        if (block.conflictingActivityIds.length) {
-          this.feedback.warning(`Bloqueio salvo. ${block.conflictingActivityIds.length} atividade(s) em conflito; replanejamento necessário.`);
-        } else {
-          this.feedback.success('Bloqueio salvo com sucesso!');
-        }
+      next: () => {
+        this.feedback.success('Bloqueio salvo com sucesso!');
         this.loadPlannerData();
       },
       error: error => this.onPlannerItemSaveFailed('bloqueio', error, item.blockId ? 'atualizar' : 'criar')
@@ -599,7 +600,6 @@ export class Main implements OnInit, OnDestroy{
 
     if (dates.length > 0) {
       const end = this.parseLocalDate(dates[dates.length - 1]);
-      end.setDate(end.getDate() + 1);
 
       return {
         start: this.parseLocalDate(dates[0]),
@@ -992,7 +992,6 @@ export class Main implements OnInit, OnDestroy{
     const max = sortedDates[sortedDates.length - 1];
 
     const end = this.parseLocalDate(max);
-    end.setDate(end.getDate() + 1);
 
     return this.generateDays(this.parseLocalDate(min), end);
   }

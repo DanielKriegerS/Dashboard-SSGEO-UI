@@ -35,7 +35,7 @@ describe('PlannerBlockToolbar', () => {
     await fixture.whenStable();
     expect(component.conflictingActivityCount).toBe(1);
     const notice: HTMLElement = fixture.nativeElement.querySelector('[role="status"]');
-    expect(notice.textContent).toContain('1 atividade(s)');
+    expect(notice).toBeNull();
     const toggle: HTMLButtonElement = fixture.nativeElement.querySelector('.planner-block-toolbar button:nth-child(2)');
     const list: HTMLElement = fixture.nativeElement.querySelector('#planner-block-list');
     expect(list.hidden).toBe(true);

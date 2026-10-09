@@ -159,3 +159,9 @@
     grid-template-columns: 1fr;
   }
 }
+
+.planner-export-destination {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem;
+}

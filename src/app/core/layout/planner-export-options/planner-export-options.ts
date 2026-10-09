@@ -16,7 +16,10 @@ export class PlannerExportOptions {
   @Input() quarters: QuarterSummary[] = [];
   @Input() sprints: SprintSummary[] = [];
   @Input() exporting = false;
-  @Output() exportRequested = new EventEmitter<PlannerExportRequest>();
+  @Output() exportRequested = new EventEmitter<{
+    request: PlannerExportRequest;
+    destination: PlannerExportFileHandle | null;
+  }>();
 
   opened = false;
   mode: PlannerExportRequest['mode'] = 'COUNT';
@@ -25,6 +28,12 @@ export class PlannerExportOptions {
   count = 15;
   quarterId = '';
   sprintId = '';
+  destination: PlannerExportFileHandle | null = null;
+  destinationError = '';
+
+  get canChooseDownloadPath(): boolean {
+    return typeof window !== 'undefined' && 'showSaveFilePicker' in window;
+  }
 
   open(selection: PlannerDisplaySelection, visibleDays: string[]): void {
     this.mode = selection.type === 'count' ? 'COUNT' : 'PERIOD';
@@ -49,6 +58,9 @@ export class PlannerExportOptions {
   }
 
   get validationMessage(): string {
+    if (this.canChooseDownloadPath && !this.destination) {
+      return 'Escolha um local para salvar o arquivo.';
+    }
     if (this.mode === 'QUARTER') {
       return this.quarters.some(quarter => quarter.id === this.quarterId)
         ? '' : 'Selecione um Quarter para exportar.';
@@ -71,24 +83,55 @@ export class PlannerExportOptions {
     return days <= 16383 ? '' : 'O Excel permite exportar no máximo 16.383 dias.';
   }
 
+  async chooseDownloadPath(): Promise<void> {
+    if (!this.canChooseDownloadPath || this.exporting) {
+      return;
+    }
+
+    this.destinationError = '';
+    try {
+      const picker = (window as unknown as Window & {
+        showSaveFilePicker: (options: {
+          suggestedName: string;
+          types: { description: string; accept: Record<string, string[]> }[];
+        }) => Promise<PlannerExportFileHandle>;
+      }).showSaveFilePicker;
+      this.destination = await picker.call(window, {
+        suggestedName: 'planner.xlsx',
+        types: [{
+          description: 'Planilha Excel',
+          accept: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'] }
+        }]
+      });
+    } catch (error) {
+      if (!(error instanceof Error && error.name === 'AbortError')) {
+        this.destinationError = 'Não foi possível selecionar o local do arquivo.';
+      }
+    }
+  }
+
   submit(): void {
     if (this.exporting || this.validationMessage) {
       return;
     }
     switch (this.mode) {
       case 'COUNT':
-        this.exportRequested.emit({ mode: this.mode, startDate: this.startDate, count: this.count });
+        this.emitExport({ mode: this.mode, startDate: this.startDate, count: this.count });
         break;
       case 'PERIOD':
-        this.exportRequested.emit({ mode: this.mode, startDate: this.startDate, endDate: this.endDate });
+        this.emitExport({ mode: this.mode, startDate: this.startDate, endDate: this.endDate });
         break;
       case 'QUARTER':
-        this.exportRequested.emit({ mode: this.mode, quarterId: this.quarterId });
+        this.emitExport({ mode: this.mode, quarterId: this.quarterId });
         break;
       case 'SPRINT':
-        this.exportRequested.emit({ mode: this.mode, sprintId: this.sprintId });
+        this.emitExport({ mode: this.mode, sprintId: this.sprintId });
         break;
     }
+  }
+
+  private emitExport(request: PlannerExportRequest): void {
+    this.exportRequested.emit({ request, destination: this.destination });
   }
 
   private isValidDate(value: string): boolean {
@@ -98,4 +141,13 @@ export class PlannerExportOptions {
     const date = new Date(value);
     return !Number.isNaN(date.getTime()) && date.toISOString().substring(0, 10) === value;
   }
+}
+
+export interface PlannerExportFileHandle {
+  readonly name: string;
+  createWritable(): Promise<{
+    write(data: Blob): Promise<void>;
+    close(): Promise<void>;
+    abort?(): Promise<void>;
+  }>;
 }

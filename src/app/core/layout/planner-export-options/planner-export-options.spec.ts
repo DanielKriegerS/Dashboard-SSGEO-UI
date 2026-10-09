@@ -40,7 +40,20 @@ describe('PlannerExportOptions', () => {
       QUARTER: { mode: 'QUARTER', quarterId: 'q1' },
       SPRINT: { mode: 'SPRINT', sprintId: 's1' }
     };
-    expect(emit).toHaveBeenCalledExactlyOnceWith(expected[mode]);
+    expect(emit).toHaveBeenCalledExactlyOnceWith({ request: expected[mode], destination: null });
+  });
+
+  it('should let the user choose a destination file', async () => {
+    const destination = { name: 'relatorio.xlsx', createWritable: vi.fn() };
+    const picker = vi.fn().mockResolvedValue(destination);
+    Object.defineProperty(window, 'showSaveFilePicker', { configurable: true, value: picker });
+    try {
+      await component.chooseDownloadPath();
+      expect(component.destination).toBe(destination);
+      expect(picker).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ suggestedName: 'planner.xlsx' }));
+    } finally {
+      delete (window as Window & { showSaveFilePicker?: unknown }).showSaveFilePicker;
+    }
   });
 
   it.each([0, -1, 1.5, 16384])('should reject invalid day count %s', count => {

@@ -90,14 +90,14 @@ describe('Main', () => {
     expect(context.visibleDays()).toEqual([]);
   });
 
-  it('should reject blocked activity creation and editing before sending requests', () => {
-    component.blocks = [{ id: 'b1', type: 'DEPENDENCY', coatendId: 'c1', startDate: '2026-10-08',
+  it.each(['CORPORATE', 'DEPENDENCY'] as const)('should reject activity creation and editing under %s', type => {
+    component.blocks = [{ id: 'b1', type, coatendId: type === 'CORPORATE' ? null : 'c1', startDate: '2026-10-08',
       endDate: '2026-10-10', conflictingActivityIds: [] }];
     const create = vi.fn();
     Object.assign(TestBed.inject(TimelineService), { create });
     const update = vi.spyOn(TestBed.inject(TimelineMutationService), 'update');
     const warning = vi.spyOn(TestBed.inject(FeedbackService), 'warning');
-    const item = { type: 'activity' as const, coatendId: 'c1', activity: Activity.SWAP,
+    const item = { type: 'activity' as const, coatendId: 'c1', activity: Activity.HOMOLOGATION,
       startDate: '2026-10-10', endDate: '2026-10-11' };
     component.createPlannerItem(item);
     component.createPlannerItem({ ...item, activityId: 'a1' });
@@ -146,18 +146,96 @@ describe('Main', () => {
     });
   });
 
-  it('should edit a dependency block and warn about preserved activity conflicts', () => {
+  it.each(['CORPORATE', 'DEPENDENCY'] as const)(
+    'should apply corporate priority when creating and editing %s over the other type', type => {
+      component.blocks = [{
+        id: 'existing', type: type === 'CORPORATE' ? 'DEPENDENCY' : 'CORPORATE',
+        coatendId: type === 'CORPORATE' ? 'c2' : null,
+        startDate: '2026-10-08', endDate: '2026-10-10', conflictingActivityIds: []
+      }];
+      const create = vi.spyOn(TestBed.inject(PlanningBlockService), 'create');
+      const update = vi.spyOn(TestBed.inject(PlanningBlockService), 'update');
+      const warning = vi.spyOn(TestBed.inject(FeedbackService), 'warning');
+      const item = { type: 'block' as const, blockType: type, coatendId: 'c1',
+        startDate: '2026-10-10', endDate: '2026-10-11' };
+      component.createPlannerItem(item);
+      component.createPlannerItem({ ...item, blockId: 'editing' });
+      if (type === 'CORPORATE') {
+        expect(create).toHaveBeenCalled();
+        expect(update).toHaveBeenCalled();
+      } else {
+        expect(create).not.toHaveBeenCalled();
+        expect(update).not.toHaveBeenCalled();
+        expect(warning).toHaveBeenCalledWith(expect.stringContaining('prioridade igual ou superior'));
+      }
+    }
+  );
+
+  it.each(['CORPORATE', 'DEPENDENCY'] as const)('should enforce priority when creating and editing %s over an existing activity', type => {
+    component.timeline = [{ id: 'a1', activity: Activity.DEVELOPMENT, coatendId: 'c1',
+      startDate: '2026-10-10', endDate: '2026-10-10', performerName: 'Dev', performerColor: '#123456' }];
+    const service = TestBed.inject(PlanningBlockService);
+    const create = vi.spyOn(service, 'create');
+    const update = vi.spyOn(service, 'update');
+    const warning = vi.spyOn(TestBed.inject(FeedbackService), 'warning');
+    vi.spyOn(component, 'loadPlannerData').mockImplementation(() => {});
+    const item = { type: 'block' as const, blockType: type, coatendId: 'c1',
+      startDate: '2026-10-08', endDate: '2026-10-10' };
+    component.createPlannerItem(item);
+    component.createPlannerItem({ ...item, blockId: 'editing' });
+    expect(create).toHaveBeenCalled();
+    expect(update).toHaveBeenCalled();
+    expect(warning).not.toHaveBeenCalled();
+    expect(component.loadPlannerData).toHaveBeenCalledTimes(2);
+    expect(component.timeline[0].id).toBe('a1');
+  });
+
+  it('should preserve a first dependency block without blocking other coatends', () => {
+    component.blocks = [{ id: 'bd', type: 'DEPENDENCY', coatendId: 'c1',
+      startDate: '2026-10-08', endDate: '2026-10-10', conflictingActivityIds: [] }];
+    const create = vi.spyOn(TestBed.inject(PlanningBlockService), 'create');
+    const item = { type: 'block' as const, blockType: 'DEPENDENCY' as const,
+      startDate: '2026-10-08', endDate: '2026-10-10' };
+    component.createPlannerItem({ ...item, coatendId: 'c1' });
+    expect(create).not.toHaveBeenCalled();
+    component.createPlannerItem({ ...item, coatendId: 'c2' });
+    expect(create).toHaveBeenCalledTimes(1);
+  });
+
+  it('should allow dependency blocks where another coatend has an activity', () => {
+    component.timeline = [{ id: 'a1', activity: Activity.HOMOLOGATION, coatendId: 'c1',
+      startDate: '2026-10-08', endDate: '2026-10-10', performerName: 'TH', performerColor: '#123456' }];
+    const create = vi.spyOn(TestBed.inject(PlanningBlockService), 'create');
+    component.createPlannerItem({ type: 'block', blockType: 'DEPENDENCY', coatendId: 'c2',
+      startDate: '2026-10-08', endDate: '2026-10-10' });
+    expect(create).toHaveBeenCalledTimes(1);
+  });
+
+  it('should allow changing the type of the edited block without conflicting with itself', () => {
+    component.blocks = [{ id: 'b1', type: 'CORPORATE', coatendId: null,
+      startDate: '2026-10-08', endDate: '2026-10-10', conflictingActivityIds: [] }];
+    const update = vi.spyOn(TestBed.inject(PlanningBlockService), 'update');
+    component.createPlannerItem({ type: 'block', blockId: 'b1', blockType: 'DEPENDENCY',
+      coatendId: 'c1', startDate: '2026-10-08', endDate: '2026-10-10' });
+    expect(update).toHaveBeenCalled();
+  });
+
+  it('should edit a dependency block and reload the trimmed timeline without an overlap warning', () => {
     const update = vi.spyOn(TestBed.inject(PlanningBlockService), 'update')
       .mockReturnValue(of({ id: 'b1', type: 'DEPENDENCY', coatendId: 'c1', startDate: '2026-10-08',
-        endDate: '2026-10-10', conflictingActivityIds: ['a1'] }));
+        endDate: '2026-10-10', conflictingActivityIds: [] }));
     const warning = vi.spyOn(TestBed.inject(FeedbackService), 'warning');
+      const success = vi.spyOn(TestBed.inject(FeedbackService), 'success');
+      const reload = vi.spyOn(component, 'loadPlannerData').mockImplementation(() => {});
     component.createPlannerItem({
       type: 'block', blockId: 'b1', blockType: 'DEPENDENCY', coatendId: 'c1', startDate: '2026-10-08', endDate: '2026-10-10'
     });
     expect(update).toHaveBeenCalledWith('b1', {
       type: 'DEPENDENCY', coatendId: 'c1', startDate: '2026-10-08', endDate: '2026-10-10'
     });
-    expect(warning).toHaveBeenCalledWith(expect.stringContaining('1 atividade(s) em conflito'));
+    expect(warning).not.toHaveBeenCalled();
+    expect(success).toHaveBeenCalledWith('Bloqueio salvo com sucesso!');
+    expect(reload).toHaveBeenCalledTimes(1);
   });
 
   it('should render corporate blocks on all rows and dependency blocks only on their coatend', () => {
@@ -506,6 +584,48 @@ describe('Main', () => {
     });
     component.previousDays();
     expect(component.visibleDays[0]).toBe('2026-10-08');
+  });
+
+  it('should stop both date sources at the inclusive quarter end', () => {
+    component.quarters = [{
+      id: 'q1', description: 'Quarter', sprintCount: 1,
+      startDate: '2026-10-09', endDate: '2026-10-23'
+    }];
+    component.loadPlaceholderPlanner();
+    expect(component.days).toHaveLength(15);
+    expect(component.days.at(-1)).toBe('2026-10-23');
+    expect(component.generateDaysFromQuarters([{
+      id: 'c1', description: 'Coatend', coatendNumber: 1,
+      quarterId: 'q1', quarterDescription: 'Quarter',
+      quarterStartDate: '2026-10-09', quarterEndDate: '2026-10-23',
+      sprintId: 's1', sprintDescription: 'Sprint',
+      sprintStartDate: '2026-10-09', sprintEndDate: '2026-10-23'
+    }])).toEqual(component.days);
+    component.nextDays();
+    expect(component.dayWindowStart).toBe(0);
+  });
+
+  it('should render only visible columns when navigating to a short last page', () => {
+    component.days = component.generateDays(
+      component.parseLocalDate('2026-10-09'), component.parseLocalDate('2026-10-25')
+    );
+    component.dayWindowSize = 15;
+    component.updatePlannerWindow();
+    fixture.changeDetectorRef.markForCheck();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('.planner-day-header')).toHaveLength(15);
+    component.nextDays();
+    fixture.changeDetectorRef.markForCheck();
+    fixture.detectChanges();
+    expect(component.visibleDays).toEqual(['2026-10-24', '2026-10-25']);
+    expect(fixture.nativeElement.querySelectorAll('.planner-day-header')).toHaveLength(2);
+    expect(component.plannerHierarchy[0].sprints[0].coatends[0].cells.map(cell => cell.date))
+      .toEqual(component.visibleDays);
+    component.previousDays();
+    fixture.changeDetectorRef.markForCheck();
+    fixture.detectChanges();
+    expect(component.visibleDays.at(-1)).toBe('2026-10-23');
+    expect(fixture.nativeElement.querySelectorAll('.planner-day-header')).toHaveLength(15);
   });
 
   it('should support selecting a single day and switching back to day count', () => {

@@ -52,21 +52,39 @@ Bloqueio**, to create a block. The **Bloqueios (N)** panel lists all blocks,
 including those outside the visible dates; click a list item or a BC/BD marker
 to edit it.
 
-- **BC / CORPORATE:** global; prevents PRE_SWAP and SWAP on every Coatend.
+- **BC / CORPORATE:** global; prevents every activity on every Coatend.
 - **BD / DEPENDENCY:** prevents every activity on the selected Coatend.
 - Both dates are inclusive. The activity modal explains matching blocks and
   prevents submission until the activity is moved or the block is edited.
-- Creating or editing blocks preserves existing activities. Conflict markers
-  and the summary use the backend's `conflictingActivityIds`. Overlapping
-  blocks do not count the same activity twice in the summary.
+- Display priority is BC > BD > activities. Corporate blocks can be created or
+  moved over dependency blocks without deleting those blocks. Creating or editing
+  either block type removes activity dates within its inclusive scope on the backend.
+  Fully covered entries are deleted; remaining dates are trimmed or split into two
+  entries with the same activity, developer and Coatend. Moving/shrinking a block
+  does not restore removed dates. Dependency blocks cannot overlap corporate blocks.
+  Duplicate blocks of the same type/scope are rejected.
+  Dependency blocks on different Coatends can share dates.
+- The block modal checks existing blocks, keeps entered data and
+  disables Save for invalid lower/equal-priority assignments. Main repeats the same shared validation
+  before sending a request; the backend remains authoritative.
+- Successful saves reload the trimmed timeline without a preserved-overlap warning.
+  Confirmed TU/SWAP protections reject the entire operation with HTTP 409.
+  `conflictingActivityIds` remains in the API for legacy diagnostics; existing blocks
+  are not migrated automatically. Re-saving a block applies the current removal rule.
 
 The frontend uses `GET /blocks`, `POST /blocks` and `PUT /blocks/{id}`. Corporate
 requests send `coatendId: null`; dependency requests send the selected Coatend ID.
-There is no delete endpoint. Excel exports include corporate blocks in global
-rows and dependency blocks below their selected Coatend, using `Bl` markers and
-the planner block colors. Dates are clipped to the export window; activity rows
-remain visible even when blocks overlap. API errors remain visible through
+There is no delete endpoint. Excel exports use `BC`/`BD` markers directly in
+Coatend cells, with no dedicated block rows. Both the planner and XLSX display
+BC above BD above activities. Dates are clipped to the export window; corporate
+fill covers all Coatend subrows, while dependency fill is scoped to its Coatend.
+Activity dates outside the block remain stored. API errors remain visible through
 planner feedback.
+
+Rule revision verified on 2026-10-09: 156 focused planner tests, development
+build and 98 backend tests passed. Real HTTP tests use isolated H2/random ports
+and cover clipping/splitting, scope, editing, milestone rollback and concurrent requests.
+No live backend restart or browser E2E verification was performed for this revision.
 
 Focused block/planner validation:
 
