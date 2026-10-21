@@ -20,12 +20,12 @@
     class="planner-modal"
     role="dialog"
     aria-modal="true"
-    [attr.aria-label]="(isEditing ? 'Editar ' : 'Adicionar ') + itemName"
+    [attr.aria-label]="dialogTitle"
     (click)="$event.stopPropagation()">
     <header class="planner-modal-header">
       <div>
         <p class="planner-modal-eyebrow">Planner</p>
-        <h2>{{ (isEditing ? 'Editar ' : 'Adicionar ') + itemName }}</h2>
+        <h2>{{ dialogTitle }}</h2>
       </div>
       <button
         type="button"
@@ -37,6 +37,26 @@
     </header>
 
     <form #itemForm="ngForm" (ngSubmit)="submit()">
+      @if (isEditingActivity) {
+        <fieldset class="planner-activity-operation" [class.is-resize]="activityEditMode() === 'resize'">
+          <legend class="visually-hidden">Operação da atividade</legend>
+          <label class="planner-operation-option" [class.is-active]="isMovingActivity">
+            <input class="visually-hidden" type="radio" name="activityOperation" value="move"
+              [checked]="isMovingActivity" (change)="changeActivityEditMode('move')">
+            <span>Mover atividade</span>
+          </label>
+          <label class="planner-operation-option" [class.is-active]="!isMovingActivity">
+            <input class="visually-hidden" type="radio" name="activityOperation" value="resize"
+              [checked]="!isMovingActivity" (change)="changeActivityEditMode('resize')">
+            <span>Ajustar período</span>
+          </label>
+        </fieldset>
+        <dl class="planner-activity-summary" aria-live="polite">
+          <div><dt>Origem</dt><dd>{{ currentRequest.startDate | date:'dd/MM/yyyy':'UTC' }} a {{ currentRequest.endDate | date:'dd/MM/yyyy':'UTC' }}</dd></div>
+          <div><dt>Destino</dt><dd>{{ startDate | date:'dd/MM/yyyy':'UTC' }} a {{ endDate | date:'dd/MM/yyyy':'UTC' }}</dd></div>
+          <div><dt>Duração</dt><dd>{{ activityDurationDays }} {{ activityDurationDays === 1 ? 'dia' : 'dias' }}</dd></div>
+        </dl>
+      }
       <div class="planner-modal-fields">
         <label
           *ngIf="!isEditing && (currentRequest.type === 'activity' || currentRequest.type === 'block')"
@@ -205,6 +225,7 @@
               name="activity"
               [ngModel]="activity"
               (ngModelChange)="onActivityChange($event)"
+              [disabled]="isMovingActivity"
               required>
               <option *ngFor="let item of activities" [value]="item">
                 {{ activityLabels[item] }}
@@ -213,7 +234,7 @@
           </label>
           <div class="planner-form-date-row">
             <label class="planner-form-field">
-              <span>Data início</span>
+              <span>{{ isMovingActivity ? 'Nova data inicial' : 'Data início' }}</span>
               <input
                 class="form-control"
                 type="date"
@@ -222,17 +243,22 @@
                 required>
             </label>
             <label class="planner-form-field">
-              <span>Data fim</span>
+              <span>{{ isMovingActivity ? 'Término previsto' : 'Data fim' }}</span>
               <input
                 class="form-control"
                 type="date"
                 name="endDate"
                 [(ngModel)]="endDate"
                 [min]="startDate"
+                [readOnly]="isMovingActivity || sameDay"
                 required>
             </label>
           </div>
-          @if (!isEditingActivity) {
+          @if (!isMovingActivity) {
+            <label class="form-check d-flex align-items-center gap-2">
+              <input class="form-check-input m-0" type="checkbox" name="sameDay" [(ngModel)]="sameDay">
+              <span>Mesmo dia</span>
+            </label>
             <label class="form-check d-flex align-items-center gap-2">
               <input class="form-check-input m-0" type="checkbox" name="includeWeekends" [(ngModel)]="includeWeekends">
               <span>Incluir fins de semana e feriados</span>
@@ -260,6 +286,7 @@
               class="form-select"
               name="developerId"
               [(ngModel)]="developerId"
+              [disabled]="isMovingActivity"
               [required]="developerRequired">
               <option value="" disabled>Selecione um desenvolvedor</option>
               <option *ngFor="let developer of developers" [value]="developer.id">
@@ -277,7 +304,7 @@
         </ng-container>
       </div>
 
-      <p *ngIf="!canSubmit && !blockingActivityBlocks.length" class="planner-modal-hint" role="status">
+      <p *ngIf="!canSubmit && !blockingActivityBlocks.length && (currentRequest.type !== 'coatend' || !sprints.length)" class="planner-modal-hint" role="status">
         <ng-container [ngSwitch]="currentRequest.type">
           <span *ngSwitchCase="'sprint'">Cadastre um Quarter antes de criar a Sprint.</span>
           <span *ngSwitchCase="'coatend'">Cadastre uma Sprint antes de criar a Coatend.</span>
@@ -295,7 +322,7 @@
           type="submit"
           class="btn btn-primary"
           [disabled]="itemForm.invalid || !canSubmit || quarterDateConflict || sprintDateConflict">
-          Salvar
+          {{ submitLabel }}
         </button>
       </footer>
     </form>

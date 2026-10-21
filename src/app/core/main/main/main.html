@@ -66,11 +66,19 @@
     [hasCompleteStructure]="hasCompleteStructure"
     [quarters]="quarters"
     [sprints]="sprints"
-    [coatends]="coatends"
+    [coatends]="coatendSummaries"
     [blocks]="blocks"
     [timeline]="timeline"
+    [featurePlanning]="featurePlanning"
+    [milestoneWarnings]="milestoneWarnings"
     (placeholderSubmitted)="createPlannerItem($event)"
     (blockCreationRequested)="openBlockCreation()"
     (blockEditionRequested)="openBlockEditor($any($event))">
   </app-planner>
+  @if (featureLoading) { <p role="status">Carregando Features e marcos...</p> }
+  @if (featureError) {
+    <div class="alert alert-warning" role="alert">{{ featureError }}
+      <button type="button" class="btn btn-outline-secondary btn-sm" (click)="loadFeaturePlanning()">Tentar novamente</button>
+    </div>
+  }
 </main>

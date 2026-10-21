@@ -19,4 +19,8 @@ export class TimelineService {
   update(id: string, payload: TimelineCreateModel): Observable<TimelineModel> {
     return this.http.put<TimelineModel>(`${this.baseUrl}/${id}`, payload);
   }
+
+  updatePeriods(id: string, periods: TimelineCreateModel[]): Observable<TimelineModel[]> {
+    return this.http.put<TimelineModel[]>(`${this.baseUrl}/${id}/periods`, periods);
+  }
 }

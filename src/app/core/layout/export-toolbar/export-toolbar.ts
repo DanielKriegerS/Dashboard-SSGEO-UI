@@ -69,6 +69,7 @@ export class ExportToolbar {
     }
 
     this.exporting = true;
+    this.cdr.markForCheck();
 
     this.plannerExportService.export(selection.request).pipe(
       switchMap(blob => from(this.savePlannerFile(blob, selection.destination))),
@@ -91,7 +92,7 @@ export class ExportToolbar {
   }
 
   private closeExportOptions(): void {
-    this.exportOptions?.close();
+    this.exportOptions?.completeExport();
   }
 
   private async savePlannerFile(blob: Blob, destination: PlannerExportFileHandle | null): Promise<void> {

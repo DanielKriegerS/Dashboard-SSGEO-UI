@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PlannerMode } from '../../../models/components/planner/PlannerMode';
@@ -40,7 +40,9 @@ export class PlannerPlaceholderActions {
   request: PlannerPlaceholderRequest | null = null;
   description = '';
   startDate = '';
-  endDate = '';
+  private editableEndDate = '';
+  readonly activityEditMode = signal<'move' | 'resize'>('move');
+  sameDay = false;
   includeWeekends = false;
   coatendNumber: number | null = null;
   quarterId = '';
@@ -69,6 +71,56 @@ export class PlannerPlaceholderActions {
     return this.request?.type === 'activity' && Boolean(this.request.activityId);
   }
 
+  get isMovingActivity(): boolean {
+    return this.isEditingActivity && this.activityEditMode() === 'move';
+  }
+
+  get endDate(): string {
+    if (!this.isMovingActivity) {
+      return this.sameDay && this.request?.type === 'activity' ? this.startDate : this.editableEndDate;
+    }
+    const duration = this.durationInDays(this.normalizeDate(this.request?.startDate), this.normalizeDate(this.request?.endDate));
+    if (!this.isValidDate(this.startDate) || !duration) {
+      return '';
+    }
+    const end = new Date(`${this.startDate}T00:00:00Z`);
+    end.setUTCDate(end.getUTCDate() + duration - 1);
+    return end.getUTCFullYear() <= 9999 ? end.toISOString().substring(0, 10) : '';
+  }
+
+  set endDate(value: string) {
+    this.editableEndDate = value;
+  }
+
+  get activityDurationDays(): number {
+    return getActivityDateRanges(this.startDate, this.endDate, this.isMovingActivity || this.includeWeekends)
+      .reduce((total, range) => total + this.durationInDays(range.startDate, range.endDate), 0);
+  }
+
+  get dialogTitle(): string {
+    return this.isEditingActivity
+      ? this.isMovingActivity ? 'Mover atividade' : 'Ajustar período'
+      : (this.isEditing ? 'Editar ' : 'Adicionar ') + this.itemName;
+  }
+
+  get submitLabel(): string {
+    return this.isEditingActivity ? this.isMovingActivity ? 'Mover atividade' : 'Aplicar período' : 'Salvar';
+  }
+
+  changeActivityEditMode(mode: 'move' | 'resize'): void {
+    if (!this.isEditingActivity) {
+      return;
+    }
+    const currentEnd = this.endDate;
+    this.activityEditMode.set(mode);
+    this.editableEndDate = currentEnd;
+    if (mode === 'move') {
+      this.sameDay = false;
+      this.onActivityChange(this.request?.activity ?? Activity.DEVELOPMENT);
+      this.developerId = this.developerRequired ? this.request?.developerId ?? '' : '';
+    }
+  }
+
   get isEditing(): boolean {
     return Boolean(this.request?.entityId || this.request?.activityId || this.request?.blockId);
   }
@@ -90,7 +142,7 @@ export class PlannerPlaceholderActions {
       return '';
     }
 
-    if (!this.isEditingActivity && !this.includeWeekends) {
+    if (!this.isMovingActivity && !this.includeWeekends) {
       return '';
     }
     const weekend = getWeekendDayName(this.startDate);
@@ -106,7 +158,7 @@ export class PlannerPlaceholderActions {
     if (this.request?.type !== 'activity') {
       return [];
     }
-    const ranges = getActivityDateRanges(this.startDate, this.endDate, this.isEditingActivity || this.includeWeekends);
+    const ranges = getActivityDateRanges(this.startDate, this.endDate, this.isMovingActivity || this.includeWeekends);
     return this.blocks.filter(block => ranges.some(range => getActivityBlockingBlocks(
       [block], this.activity, this.coatendId, range.startDate, range.endDate
     ).length > 0));
@@ -124,7 +176,7 @@ export class PlannerPlaceholderActions {
   }
 
   get hasActivityDates(): boolean {
-    return getActivityDateRanges(this.startDate, this.endDate, this.isEditingActivity || this.includeWeekends).length > 0;
+    return getActivityDateRanges(this.startDate, this.endDate, this.isMovingActivity || this.includeWeekends).length > 0;
   }
 
   get itemName(): string {
@@ -176,10 +228,12 @@ export class PlannerPlaceholderActions {
 
   open(request: PlannerPlaceholderRequest): void {
     this.request = request;
+    this.activityEditMode.set('move');
+    this.sameDay = false;
     this.description = request.description ?? '';
     this.startDate = this.normalizeDate(request.startDate);
     this.endDate = this.normalizeDate(request.endDate);
-    this.includeWeekends = false;
+    this.includeWeekends = this.isEditingActivity;
     this.coatendNumber = request.coatendNumber ?? null;
     this.quarterId = request.quarterId ??
       (this.quarters.length === 1 ? this.quarters[0].id : '');
@@ -261,14 +315,14 @@ export class PlannerPlaceholderActions {
         submission.sprintId = this.sprintId;
         break;
       case 'activity':
-        submission.activity = this.activity;
-        if (!this.isEditingActivity) {
+        submission.activity = this.isMovingActivity ? this.request.activity ?? Activity.DEVELOPMENT : this.activity;
+        if (!this.isMovingActivity) {
           submission.includeWeekends = this.includeWeekends;
         }
         submission.startDate = this.startDate;
         submission.endDate = this.endDate;
-        submission.developerId = this.developerRequired
-          ? this.developerId || undefined
+        submission.developerId = requiresActivityDeveloper(submission.activity)
+          ? (this.isMovingActivity ? this.request.developerId : this.developerId) || undefined
           : undefined;
         submission.coatendId = this.coatendId;
         break;
@@ -298,6 +352,13 @@ export class PlannerPlaceholderActions {
 
   private normalizeDate(date?: string): string {
     return date?.substring(0, 10) ?? '';
+  }
+
+  private durationInDays(startDate: string, endDate: string): number {
+    if (!getActivityDateRanges(startDate, endDate, true).length) {
+      return 0;
+    }
+    return (Date.parse(endDate) - Date.parse(startDate)) / 86400000 + 1;
   }
 
   private isValidDate(date: string): boolean {

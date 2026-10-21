@@ -27,6 +27,152 @@ describe('PlannerPlaceholderActions', () => {
     expect(component).toBeTruthy();
   });
 
+  it('lets period adjustment exclude weekends, count working days and ignore weekend-only blocks', async () => {
+    component.coatends = [{ id: 'c1', description: 'Coatend', coatendNumber: 8681 }];
+    component.blocks = [{ id: 'b1', type: 'CORPORATE', coatendId: null,
+      startDate: '2026-10-24', endDate: '2026-10-25', conflictingActivityIds: [] }];
+    component.open({ type: 'activity', activityId: 'a1', coatendId: 'c1', activity: Activity.SWAP,
+      startDate: '2026-10-23', endDate: '2026-10-27' });
+    component.changeActivityEditMode('resize');
+    fixture.changeDetectorRef.markForCheck();
+    await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('[name="includeWeekends"]')).toBeTruthy();
+    expect(component.includeWeekends).toBe(true);
+    expect(component.canSubmit).toBe(false);
+    component.includeWeekends = false;
+    expect(component.canSubmit).toBe(true);
+    expect(component.activityDurationDays).toBe(3);
+    expect(component.activityWeekendWarning).toBe('');
+    const emit = vi.spyOn(component.submitted, 'emit');
+    component.submit();
+    expect(emit).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+      activityId: 'a1', includeWeekends: false, startDate: '2026-10-23', endDate: '2026-10-27'
+    }));
+  });
+
+  it.each([undefined, 'a1'])('keeps the end on the start date when same-day is selected for %s', activityId => {
+    component.open({ type: 'activity', activityId, startDate: '2026-10-19', endDate: '2026-10-23' });
+    if (activityId) component.changeActivityEditMode('resize');
+    component.sameDay = true;
+    expect(component.endDate).toBe('2026-10-19');
+    component.startDate = '2026-10-20';
+    expect(component.endDate).toBe('2026-10-20');
+    component.sameDay = false;
+    expect(component.endDate).toBe('2026-10-23');
+    component.close();
+    component.open({ type: 'activity' });
+    expect(component.sameDay).toBe(false);
+  });
+
+  it.each([
+    ['2026-10-19', '2026-10-19', '2026-10-20', '2026-10-20', 1],
+    ['2026-10-19', '2026-10-21', '2026-10-30', '2026-11-01', 3],
+    ['2028-02-28', '2028-02-29', '2028-02-29', '2028-03-01', 2]
+  ])('moves %s through %s to %s with the same inclusive duration', (start, end, target, expectedEnd, duration) => {
+    component.coatends = [{ id: 'c1', description: 'Coatend', coatendNumber: 8681 }];
+    component.open({ type: 'activity', activityId: 'a1', coatendId: 'c1', activity: Activity.DEVELOPMENT,
+      developerId: 'd1', startDate: start, endDate: end });
+    component.startDate = target;
+    component.endDate = '2026-12-31';
+    expect(component.isMovingActivity).toBe(true);
+    expect(component.endDate).toBe(expectedEnd);
+    expect(component.activityDurationDays).toBe(duration);
+    const emit = vi.spyOn(component.submitted, 'emit');
+    component.submit();
+    expect(emit).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+      activityId: 'a1', coatendId: 'c1', activity: Activity.DEVELOPMENT, developerId: 'd1',
+      startDate: target, endDate: expectedEnd
+    }));
+  });
+
+  it('adjusts duration explicitly and restores the original duration when switching back to move', () => {
+    component.coatends = [{ id: 'c1', description: 'Coatend', coatendNumber: 8681 }];
+    component.open({ type: 'activity', activityId: 'a1', coatendId: 'c1', activity: Activity.DEVELOPMENT,
+      developerId: 'd1', startDate: '2026-10-19', endDate: '2026-10-19' });
+    component.changeActivityEditMode('resize');
+    component.endDate = '2026-10-20';
+    expect(component.activityDurationDays).toBe(2);
+    component.changeActivityEditMode('move');
+    component.startDate = '2026-10-20';
+    expect(component.endDate).toBe('2026-10-20');
+    expect(component.activityDurationDays).toBe(1);
+    component.changeActivityEditMode('resize');
+    component.endDate = '2026-10-22';
+    const emit = vi.spyOn(component.submitted, 'emit');
+    component.submit();
+    expect(emit).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+      activityId: 'a1', startDate: '2026-10-20', endDate: '2026-10-22'
+    }));
+  });
+
+  it('checks blocks across the entire computed destination and rejects an empty start', () => {
+    component.coatends = [{ id: 'c1', description: 'Coatend', coatendNumber: 8681 }];
+    component.blocks = [{ id: 'bc1', type: 'CORPORATE', coatendId: null,
+      startDate: '2026-10-21', endDate: '2026-10-21', conflictingActivityIds: [] }];
+    component.open({ type: 'activity', activityId: 'a1', coatendId: 'c1', activity: Activity.DEVELOPMENT,
+      developerId: 'd1', startDate: '2026-10-19', endDate: '2026-10-20' });
+    expect(component.canSubmit).toBe(true);
+    component.startDate = '2026-10-20';
+    expect(component.endDate).toBe('2026-10-21');
+    expect(component.blockingActivityBlocks.map(block => block.id)).toEqual(['bc1']);
+    expect(component.canSubmit).toBe(false);
+    const emit = vi.spyOn(component.submitted, 'emit');
+    component.submit();
+    expect(emit).not.toHaveBeenCalled();
+    component.startDate = '';
+    expect(component.endDate).toBe('');
+    expect(component.canSubmit).toBe(false);
+  });
+
+  it('restores the original activity and developer when returning to move', () => {
+    component.open({ type: 'activity', activityId: 'a1', coatendId: 'c1', activity: Activity.DEVELOPMENT,
+      developerId: 'd1', startDate: '2026-10-19', endDate: '2026-10-19' });
+    component.changeActivityEditMode('resize');
+    component.onActivityChange(Activity.SWAP);
+    component.changeActivityEditMode('move');
+    expect(component.activity).toBe(Activity.DEVELOPMENT);
+    expect(component.developerId).toBe('d1');
+  });
+
+  it('distinguishes moving and resizing visually without exposing duplication', async () => {
+    component.coatends = [{ id: 'c1', description: 'Coatend', coatendNumber: 8681 }];
+    component.open({ type: 'activity', activityId: 'a1', coatendId: 'c1', activity: Activity.DEVELOPMENT,
+      developerId: 'd1', startDate: '2026-10-19', endDate: '2026-10-19' });
+    fixture.changeDetectorRef.markForCheck();
+    await fixture.whenStable();
+    const host: HTMLElement = fixture.nativeElement;
+    expect(host.querySelector('h2')?.textContent).toBe('Mover atividade');
+    expect(host.querySelector<HTMLInputElement>('input[name="endDate"]')?.readOnly).toBe(true);
+    expect(host.querySelector<HTMLSelectElement>('select[name="activity"]')?.disabled).toBe(true);
+    expect(host.querySelector<HTMLSelectElement>('select[name="developerId"]')?.disabled).toBe(true);
+    expect(host.textContent).not.toContain('Duplicar');
+    host.querySelector<HTMLInputElement>('input[value="resize"]')!.click();
+    await fixture.whenStable();
+    expect(host.querySelector('h2')?.textContent).toBe('Ajustar período');
+    expect(host.querySelector<HTMLInputElement>('input[name="endDate"]')?.readOnly).toBe(false);
+    expect(host.querySelector<HTMLSelectElement>('select[name="activity"]')?.disabled).toBe(false);
+    expect(host.querySelector('button[type="submit"]')?.textContent?.trim()).toBe('Aplicar período');
+    component.close();
+    component.open({ type: 'activity', activityId: 'a2', startDate: '2026-10-21', endDate: '2026-10-21' });
+    expect(component.activityEditMode()).toBe('move');
+  });
+
+  it('should require choosing an existing sprint without asking to register another', async () => {
+    component.sprints = [
+      { id: 's1', description: 'Sprint 1', coatendsCount: 0, startDate: '2026-10-01', endDate: '2026-10-15' },
+      { id: 's2', description: 'Sprint 2', coatendsCount: 0, startDate: '2026-10-16', endDate: '2026-10-31' }
+    ];
+    component.open({ type: 'coatend' });
+    fixture.changeDetectorRef.markForCheck();
+    await fixture.whenStable();
+    expect(component.sprintId).toBe('');
+    expect(component.canSubmit).toBe(false);
+    expect(fixture.nativeElement.textContent).not.toContain('Cadastre uma Sprint');
+    expect(fixture.nativeElement.querySelector('select[name="sprintId"]').options.length).toBe(3);
+    component.sprintId = 's2';
+    expect(component.canSubmit).toBe(true);
+  });
+
   it.each([undefined, 'a1'])('should prevent saving a blocked activity when activity ID is %s', async activityId => {
     component.coatends = [{ id: 'c1', description: 'Test', coatendNumber: 1 }];
     component.blocks = [{

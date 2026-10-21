@@ -18,10 +18,20 @@ import { getWeekendDayName, getHolidayName, getNonWorkingDayLabel } from '../../
 import { PlanningBlock } from '../../../models/components/planner/PlanningBlock';
 import { TimelineModel } from '../../../models/timeline/TimelineModel';
 import { buildPlannerBlockEntries, getVisiblePlannerEntries } from '../../../shared/utils/planner-blocks';
+import { RouterLink } from '@angular/router';
+import { FeaturePhase, FeaturePlanningModel, MilestoneWarning } from '../../../models/feature/FeaturePlanningModel';
+import { featureReason, milestoneWarningLabel } from '../../../shared/utils/feature-labels';
+
+interface FeatureSegment {
+  start: string;
+  colspan: number;
+  kind: 'development' | 'homologation' | null;
+  phase: FeaturePhase | null;
+}
 
 @Component({
   selector: 'app-planner',
-  imports: [CommonModule, PlannerPlaceholderActions],
+  imports: [CommonModule, PlannerPlaceholderActions, RouterLink],
   templateUrl: './planner.html',
   styleUrls: ['./planner.scss'],
 })
@@ -30,6 +40,45 @@ export class Planner {
   readonly holidayName = getHolidayName;
   readonly nonWorkingDayLabel = getNonWorkingDayLabel;
   readonly visibleEntries = getVisiblePlannerEntries;
+  readonly featureReason = featureReason;
+  readonly warningLabel = milestoneWarningLabel;
+  @Input() featurePlanning: FeaturePlanningModel[] = [];
+  @Input() milestoneWarnings: MilestoneWarning[] = [];
+
+  warningsFor(coatendId: string | null): MilestoneWarning[] {
+    return this.milestoneWarnings.filter(warning => warning.coatendId === coatendId);
+  }
+
+  phaseOnDay(phase: FeaturePhase, day: string): boolean {
+    return !!phase.plannedStart && !!phase.plannedEnd && day >= phase.plannedStart && day <= phase.plannedEnd;
+  }
+
+  featureRows(): { feature: FeaturePlanningModel; segments: FeatureSegment[] }[] {
+    return this.featurePlanning.map(feature => {
+      const segments: FeatureSegment[] = [];
+      for (const day of this.days) {
+        const kind = this.phaseOnDay(feature.development, day) ? 'development'
+          : this.phaseOnDay(feature.homologation, day) ? 'homologation' : null;
+        const previous = segments[segments.length - 1];
+        if (kind && previous && previous.kind === kind) {
+          previous.colspan++;
+        } else {
+          segments.push({ start: day, colspan: 1, kind, phase: kind ? feature[kind] : null });
+        }
+      }
+      return { feature, segments };
+    });
+  }
+
+  phaseTitle(feature: FeaturePlanningModel, phase: FeaturePhase, kind: 'development' | 'homologation'): string {
+    const label = kind === 'development' ? 'Desenvolvimento + TU' : 'Homologacao ate SWAP';
+    const estimate = phase.estimatedPercent === null ? 'Estimativa indisponivel'
+      : `${phase.estimatedPercent.toFixed(2)}% estimado`;
+    const reasons = [...phase.unavailableReasons, ...phase.limitations].map(reason => this.featureReason(reason));
+    return [feature.name, label, estimate, phase.confirmed ? 'Confirmado' : 'Nao confirmado',
+      `${phase.plannedStart} a ${phase.plannedEnd}`,
+      phase.effectiveStart ? `Inicio efetivo: ${phase.effectiveStart}` : '', ...reasons].filter(Boolean).join(' | ');
+  }
 
   @ViewChild('placeholderActions') placeholderActions?: PlannerPlaceholderActions;
   @Output() placeholderSubmitted = new EventEmitter<PlannerPlaceholderSubmission>();
@@ -59,6 +108,12 @@ export class Planner {
 
   isPlaceholderHeader(header: PlannerHeader, type: PlannerPlaceholderType): boolean {
     return header.id.toLowerCase().startsWith(`placeholder-${type}`);
+  }
+
+  get lastSprintId(): string | undefined {
+    return this.sprints.reduce<SprintSummary | undefined>((latest, sprint) =>
+      !latest || (sprint.endDate ?? '') >= (latest.endDate ?? '') ? sprint : latest,
+      undefined)?.id;
   }
 
   openPlaceholder(request: PlannerPlaceholderRequest): void {

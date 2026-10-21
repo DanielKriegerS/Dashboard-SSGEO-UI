@@ -18,6 +18,10 @@
 
   <div class="planner-table-container" role="region" aria-label="Tabela do planner" tabindex="0">
     <table class="table table-bordered text-center planner-table">
+      <colgroup>
+        <col class="planner-label-track">
+        @for (day of days; track day) { <col class="planner-date-track"> }
+      </colgroup>
       <thead>
         <tr>
           <th rowspan="3" scope="col" class="align-middle planner-fixed-column">
@@ -74,8 +78,13 @@
                 (click)="openStructureEditor('sprint', s.id)">
                 {{ s.description }}
               </button>
-              <ng-template #emptySprint>-</ng-template>
+              <ng-template #emptySprint></ng-template>
             </ng-template>
+            @if (s.id === lastSprintId) {
+              <button type="button" class="planner-add-placeholder planner-add-sprint"
+                aria-label="Adicionar Sprint" title="Adicionar Sprint"
+                (click)="openPlaceholder({ type: 'sprint' })">+</button>
+            }
           </th>
         </tr>
         <tr>
@@ -95,8 +104,8 @@
       <tbody>
         <ng-container *ngFor="let q of hierarchy">
           <ng-container *ngFor="let s of q.sprints">
-            <tr
-              *ngFor="let row of s.coatends"
+            <ng-container *ngFor="let row of s.coatends">
+            <tr *ngIf="!row.isPlaceholder || mode !== 'structured'"
               [class.planner-placeholder-row]="row.isPlaceholder">
               <td class="text-start planner-fixed-column planner-coatend-cell">
                 <button
@@ -117,6 +126,17 @@
                     {{ row.coatendDescription }}
                   </button>
                 </ng-template>
+                @if (warningsFor(row.coatendId).length) {
+                  <details class="planner-milestone-warning">
+                    <summary [attr.aria-label]="warningsFor(row.coatendId).length + ' aviso(s) de marco. Abrir detalhes'" [title]="warningsFor(row.coatendId).length + ' aviso(s) de marco'"><span aria-hidden="true">!</span></summary>
+                    <div class="planner-warning-content">
+                      @for (warning of warningsFor(row.coatendId); track warning.milestone) {
+                        <p>{{ warningLabel(warning) }} @if (warning.plannedEnd) { ({{ warning.plannedEnd | date:'dd/MM/yyyy' }}) }</p>
+                      }
+                      <a [routerLink]="['/coatends', row.coatendId]">Abrir Coatend e marcos</a>
+                    </div>
+                  </details>
+                }
               </td>
               <td
                 *ngFor="let cell of row.cells"
@@ -144,14 +164,17 @@
                 </div>
               </td>
             </tr>
+            </ng-container>
+          </ng-container>
+        </ng-container>
             <tr *ngIf="mode === 'structured'" class="planner-placeholder-row">
               <td class="text-start planner-fixed-column planner-coatend-cell">
                 <button
                   type="button"
                   class="planner-add-placeholder"
-                  aria-label="Adicionar Coatend nesta Sprint"
+                  aria-label="Adicionar Coatend"
                   title="Adicionar Coatend"
-                  (click)="openPlaceholder({ type: 'coatend', sprintId: s.sprintId })">
+                  (click)="openPlaceholder({ type: 'coatend' })">
                   +
                 </button>
               </td>
@@ -180,8 +203,29 @@
                 </div>
               </td>
             </tr>
-          </ng-container>
-        </ng-container>
+        @for (featureRow of featureRows(); track featureRow.feature.id) {
+          @let feature = featureRow.feature;
+          <tr class="planner-feature-row">
+            <th scope="row" class="planner-fixed-column" [attr.aria-label]="'Linha do tempo de ' + feature.name">
+              <a class="link-body-emphasis text-decoration-none" [routerLink]="['/admin/features', feature.id]">{{ feature.name }}</a>
+            </th>
+            @for (segment of featureRow.segments; track segment.start) {
+              <td class="planner-feature-cell" [attr.colspan]="segment.colspan"
+                [class.planner-weekend-cell]="!segment.phase && !!nonWorkingDayLabel(segment.start)"
+                [class.planner-feature-development]="segment.kind === 'development'"
+                [class.planner-feature-homologation]="segment.kind === 'homologation'">
+                @if (segment.phase; as phase) {
+                  <a class="planner-feature-phase" [routerLink]="['/admin/features', feature.id]"
+                    [title]="phaseTitle(feature, phase, segment.kind!)"
+                    [attr.aria-label]="phaseTitle(feature, phase, segment.kind!)">
+                    <span class="planner-feature-name">{{ segment.kind === 'development' ? 'Desenvolvimento + TU' : 'Homologação' }}</span>
+                    <span class="planner-feature-percent">{{ phase.estimatedPercent === null ? 'Indisponivel' : (phase.estimatedPercent | number:'1.0-2') + '%' }}</span>
+                  </a>
+                }
+              </td>
+            }
+          </tr>
+        }
       </tbody>
     </table>
   </div>

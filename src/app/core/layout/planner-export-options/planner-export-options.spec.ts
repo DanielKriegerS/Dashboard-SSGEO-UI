@@ -56,6 +56,22 @@ describe('PlannerExportOptions', () => {
     }
   });
 
+  it('does not request export when the destination picker is cancelled', async () => {
+    const picker = vi.fn().mockRejectedValue(new DOMException('Cancelled', 'AbortError'));
+    Object.defineProperty(window, 'showSaveFilePicker', { configurable: true, value: picker });
+    try {
+      const emit = vi.spyOn(component.exportRequested, 'emit');
+      await component.submit();
+      expect(picker).toHaveBeenCalledOnce();
+      expect(emit).not.toHaveBeenCalled();
+      expect(component.opened).toBe(true);
+      expect(component.choosingDestination()).toBe(false);
+      expect(component.destinationError).toBe('');
+    } finally {
+      delete (window as Window & { showSaveFilePicker?: unknown }).showSaveFilePicker;
+    }
+  });
+
   it.each([0, -1, 1.5, 16384])('should reject invalid day count %s', count => {
     component.count = count;
     const emit = vi.spyOn(component.exportRequested, 'emit');

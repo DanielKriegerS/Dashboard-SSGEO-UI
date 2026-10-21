@@ -11,6 +11,10 @@
     "src/app/shared/services/planner-export-context.spec.ts",
     "src/app/core/main/main/main.spec.ts",
     "src/app/services/planning-block.spec.ts",
+    "src/app/services/feature.spec.ts",
+    "src/app/pages/feature/feature.spec.ts",
+    "src/app/pages/coatend/coatend-feature.spec.ts",
+    "src/app/shared/components/move-to/move-to.spec.ts",
     "src/app/shared/utils/planner-blocks.spec.ts"
   ]
 }

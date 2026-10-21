@@ -17,6 +17,8 @@ import { PlannerExportService } from '../../../services/planner-export';
 import { PlanningBlockService } from '../../../services/planning-block';
 import { HttpErrorResponse } from '@angular/common/http';
 import { PlannerExportContextService } from '../../../shared/services/planner-export-context';
+import { FeatureService } from '../../../services/feature';
+import { provideRouter } from '@angular/router';
 
 describe('Main', () => {
   let component: Main;
@@ -26,17 +28,20 @@ describe('Main', () => {
     await TestBed.configureTestingModule({
       imports: [Main],
       providers: [
+        provideRouter([]),
+        { provide: FeatureService, useValue: { getAll: () => of([]), getPlanning: () => of({}) } },
         { provide: Quarter, useValue: { getAll: () => of([]) } },
         { provide: SprintService, useValue: { getAll: () => of([]) } },
         {
           provide: CoatendService,
           useValue: {
             getAll: () => of([]),
+            getMilestones: () => of({ warnings: [] }),
             getPlannerData: () => of([])
           }
         },
         { provide: TimelineService, useValue: { getAll: () => of([]) } },
-        { provide: TimelineMutationService, useValue: { update: () => of({}) } },
+        { provide: TimelineMutationService, useValue: { update: () => of({}), updatePeriods: () => of([]) } },
         { provide: DeveloperService, useValue: { getAll: () => of([]) } },
         { provide: PlanningBlockService, useValue: {
           getAll: () => of([]),
@@ -54,6 +59,104 @@ describe('Main', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  it('updates only working periods using the original ID without separate creation requests', () => {
+    const update = vi.spyOn(TestBed.inject(TimelineMutationService), 'update');
+    const updatePeriods = vi.spyOn(TestBed.inject(TimelineMutationService), 'updatePeriods');
+    component.blocks = [{ id: 'b1', type: 'CORPORATE', coatendId: null,
+      startDate: '2026-10-24', endDate: '2026-10-25', conflictingActivityIds: [] }];
+    component.createPlannerItem({ type: 'activity', activityId: 'a1', coatendId: 'c1', activity: Activity.SWAP,
+      startDate: '2026-10-23', endDate: '2026-10-27', includeWeekends: false });
+    expect(update).not.toHaveBeenCalled();
+    expect(updatePeriods).toHaveBeenCalledExactlyOnceWith('a1', [
+      { activity: Activity.SWAP, startDate: '2026-10-23', endDate: '2026-10-23', developerId: null },
+      { activity: Activity.SWAP, startDate: '2026-10-26', endDate: '2026-10-27', developerId: null }
+    ]);
+  });
+
+  it('does not put the Sprint creation action into a gap between registered Sprints', () => {
+    const headers = component.buildSprintSummaryHeaders([
+      { id: 's1', description: 'S1', coatendsCount: 0, startDate: '2026-10-23', endDate: '2026-10-23' },
+      { id: 's2', description: 'S2', coatendsCount: 0, startDate: '2026-10-26', endDate: '2026-10-26' }
+    ], ['2026-10-23', '2026-10-24', '2026-10-25', '2026-10-26']);
+    expect(headers).toEqual([
+      { id: 's1', description: 'S1', colspan: 1 }, { id: '__empty__', description: '', colspan: 2 },
+      { id: 's2', description: 'S2', colspan: 1 }
+    ]);
+  });
+
+  it('announces the actual visible dates after changing day count or period', () => {
+    component.days = ['2026-10-19', '2026-10-20', '2026-10-21'];
+    const info = vi.spyOn(TestBed.inject(FeedbackService), 'info');
+    component.applyDisplaySelection({ type: 'count', count: 2 });
+    expect(info).toHaveBeenLastCalledWith('Exibição atualizada: 2 dia(s), de 19/10/2026 a 20/10/2026.');
+    component.applyDisplaySelection({ type: 'period', startDate: '2026-10-20', endDate: '2026-10-21' });
+    expect(info).toHaveBeenLastCalledWith('Exibição atualizada: 2 dia(s), de 20/10/2026 a 21/10/2026.');
+    info.mockClear();
+    component.applyDisplaySelection({ type: 'count', count: 0 });
+    expect(info).not.toHaveBeenCalled();
+  });
+
+  it('allows editing and creating a past activity for a Coatend without a Sprint', async () => {
+    component.coatendSummaries = [{ id: 'c1', description: 'Ativar tela de espera', coatendNumber: 8579 }];
+    component.coatends = [];
+    fixture.changeDetectorRef.markForCheck();
+    await fixture.whenStable();
+    const planner = component.plannerComponent!;
+    planner.openStructureEditor('coatend', 'c1');
+    expect(planner.placeholderActions?.request?.entityId).toBe('c1');
+    planner.openActivityCreation('2026-10-13', 'c1');
+    const modal = planner.placeholderActions!;
+    modal.endDate = '2026-10-14';
+    modal.developerId = 'd1';
+    expect(modal.coatendId).toBe('c1');
+    expect(modal.hasActivityDates).toBe(true);
+    expect(modal.canSubmit).toBe(true);
+    const submit = vi.spyOn(component, 'createPlannerItem').mockImplementation(() => {});
+    modal.submit();
+    expect(submit).toHaveBeenCalledWith(expect.objectContaining({
+      type: 'activity', coatendId: 'c1', startDate: '2026-10-13', endDate: '2026-10-14', developerId: 'd1'
+    }));
+  });
+
+  it('renders asynchronous Feature loading before the development-mode stability check', () => {
+    const quarters = new Subject<QuarterSummary[]>();
+    const features = new Subject<[]>();
+    vi.spyOn(TestBed.inject(Quarter), 'getAll').mockReturnValue(quarters);
+    vi.spyOn(TestBed.inject(FeatureService), 'getAll').mockReturnValue(features);
+    component.loadPlannerData();
+    quarters.next([]);
+    quarters.complete();
+    expect(component.featureLoading).toBe(true);
+    expect(() => fixture.checkNoChanges()).not.toThrow();
+    features.next([]);
+    features.complete();
+    expect(component.featureLoading).toBe(false);
+    expect(() => fixture.checkNoChanges()).not.toThrow();
+  });
+
+  it('loads each Feature planning once and keeps it independent of Sprint grouping', () => {
+    const service = TestBed.inject(FeatureService);
+    vi.spyOn(service, 'getAll').mockReturnValue(of([{ id: 'f1', name: 'Entrega', description: null, coatends: [] }]));
+    const phase = { plannedStart: null, plannedEnd: null, effectiveStart: null, confirmedAt: null,
+      confirmed: false, estimatedPercent: null, unavailableReasons: ['NO_COATENDS'], limitations: [] };
+    const planning = vi.spyOn(service, 'getPlanning').mockReturnValue(of({ id: 'f1', name: 'Entrega', description: null,
+      referenceDate: '2026-10-09', zone: 'America/Sao_Paulo', development: phase, homologation: phase,
+      coatends: [], warnings: [], pendingCoatendCount: 0 }));
+    component.loadFeaturePlanning();
+    expect(planning).toHaveBeenCalledTimes(1);
+    expect(planning).toHaveBeenCalledWith('f1');
+    expect(component.featurePlanning).toHaveLength(1);
+  });
+
+  it('keeps the existing planner visible and reports failed Feature loading', () => {
+    vi.spyOn(TestBed.inject(FeatureService), 'getAll').mockReturnValue(throwError(() => ({ status: 500 })));
+    const hierarchy = component.plannerHierarchy;
+    component.loadFeaturePlanning();
+    expect(component.plannerHierarchy).toBe(hierarchy);
+    expect(component.featurePlanning).toEqual([]);
+    expect(component.featureError).toContain('carregar');
   });
 
   it('should route toolbar creation and editing to the planner modal', async () => {
@@ -300,6 +403,32 @@ describe('Main', () => {
     } finally {
       log.mockRestore();
     }
+  });
+
+  it.each(['move', 'resize'] as const)('updates the same activity without creating a record in %s mode', async mode => {
+    component.coatendSummaries = [{ id: 'c1', description: 'Coatend', coatendNumber: 8681 }];
+    fixture.changeDetectorRef.markForCheck();
+    await fixture.whenStable();
+    const create = vi.fn();
+    const createBatch = vi.fn();
+    Object.assign(TestBed.inject(TimelineService), { create, createBatch });
+    const update = vi.spyOn(TestBed.inject(TimelineMutationService), 'update');
+    const modal = component.plannerComponent!.placeholderActions!;
+    modal.open({ type: 'activity', activityId: 'a1', coatendId: 'c1', activity: Activity.DEVELOPMENT,
+      developerId: 'd1', startDate: '2026-10-19', endDate: '2026-10-19' });
+    modal.changeActivityEditMode(mode);
+    if (mode === 'move') {
+      modal.startDate = '2026-10-20';
+    } else {
+      modal.endDate = '2026-10-20';
+    }
+    modal.submit();
+    expect(update).toHaveBeenCalledExactlyOnceWith('a1', {
+      activity: Activity.DEVELOPMENT, developerId: 'd1',
+      startDate: mode === 'move' ? '2026-10-20' : '2026-10-19', endDate: '2026-10-20'
+    });
+    expect(create).not.toHaveBeenCalled();
+    expect(createBatch).not.toHaveBeenCalled();
   });
 
   it.each([

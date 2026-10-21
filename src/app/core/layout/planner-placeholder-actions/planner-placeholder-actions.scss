@@ -97,6 +97,73 @@
   gap: 1rem;
 }
 
+.planner-activity-operation {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.planner-operation-option {
+  display: grid;
+  min-height: 44px;
+  align-items: center;
+  padding: 0.5rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  color: #334155;
+  background: #f8fafc;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+}
+
+.planner-operation-option.is-active {
+  border-color: #0284c7;
+  color: #075985;
+  background: #e0f2fe;
+}
+
+.planner-activity-operation.is-resize .planner-operation-option.is-active {
+  border-color: #059669;
+  color: #065f46;
+  background: #ecfdf5;
+}
+
+.planner-operation-option:focus-within {
+  outline: 2px solid #0284c7;
+  outline-offset: 2px;
+}
+
+.planner-activity-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+  gap: 0.75rem;
+  margin: 0 0 1rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #e2e8f0;
+  color: #334155;
+  font-size: 0.8rem;
+}
+
+.planner-activity-summary div {
+  min-width: 0;
+}
+
+.planner-activity-summary dt {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.planner-activity-summary dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-weight: 600;
+}
+
 .planner-form-field {
   display: grid;
   min-width: 0;
@@ -157,6 +224,10 @@
 
   .planner-form-date-row {
     grid-template-columns: 1fr;
+  }
+
+  .planner-activity-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

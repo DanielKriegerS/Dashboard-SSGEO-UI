@@ -1,0 +1,55 @@
+<section class="feature-section" aria-labelledby="coatend-feature-heading">
+  <h3 class="h5" id="coatend-feature-heading">Feature e marcos</h3>
+  @if (loading()) { <p role="status">Carregando vinculo e marcos...</p> }
+  @if (error()) {
+    <p class="alert alert-danger" role="alert">{{ error() }}</p>
+    <button type="button" class="btn btn-outline-secondary" [disabled]="busy() || loading()" (click)="load()">Atualizar</button>
+  }
+  @if (notice()) { <p role="status" class="alert alert-success">{{ notice() }}</p> }
+  @if (milestones(); as state) {
+    <form class="feature-form" [formGroup]="form" (ngSubmit)="saveLink()">
+      <label class="form-label" for="coatend-feature">Feature</label>
+      <select class="form-select mb-3" id="coatend-feature" formControlName="featureId">
+        <option value="">Sem Feature</option>
+        @for (feature of features(); track feature.id) {
+          <option [value]="feature.id" [disabled]="!!currentFeature() && feature.id !== currentFeature()?.id">{{ feature.name }}</option>
+        }
+      </select>
+      <label class="form-label" for="coatend-weight">Peso (opcional)</label>
+      <input class="form-control" id="coatend-weight" type="number" step="any" formControlName="weight">
+      @if (form.controls.weight.invalid) { <p class="text-danger" role="alert">O peso informado deve ser maior que zero.</p> }
+      <div class="feature-actions">
+        <button type="submit" class="btn btn-primary" [disabled]="busy() || form.invalid">Salvar vinculo e peso</button>
+        @if (currentFeature(); as feature) {
+          <a class="btn btn-outline-secondary" [routerLink]="['/admin/features', feature.id]">Abrir Feature</a>
+          <button type="button" class="btn btn-outline-danger" [disabled]="busy()" (click)="confirmation.set('UNLINK')">Desvincular</button>
+        }
+      </div>
+    </form>
+    <div class="table-responsive">
+      <table class="table align-middle">
+        <thead><tr><th scope="col">Marco</th><th scope="col">Fim previsto</th><th scope="col">Confirmacao</th><th scope="col">Acao</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">TU</th><td>{{ state.tu.plannedEnd ? (state.tu.plannedEnd | date:'dd/MM/yyyy') : 'Previsao incompleta' }}</td>
+            <td>{{ state.tu.confirmedAt ? (state.tu.confirmedAt | date:'dd/MM/yyyy HH:mm':'-0300') : 'Nao confirmada' }} @if (state.tu.confirmedAt) { <small>{{ state.tu.confirmedBy || 'Autor nao identificado' }}</small> }</td>
+            <td><button type="button" class="btn btn-outline-success btn-sm" [disabled]="busy() || !!state.tu.confirmedAt || !!state.tu.unavailableReason" (click)="confirmation.set('TU')">Confirmar TU</button>
+              @if (state.tu.unavailableReason) { <small class="d-block">{{ reasonLabel(state.tu.unavailableReason) }}</small> }</td></tr>
+          <tr><th scope="row">SWAP</th><td>{{ state.swap.plannedEnd ? (state.swap.plannedEnd | date:'dd/MM/yyyy') : 'Previsao incompleta' }}</td>
+            <td>{{ state.swap.confirmedAt ? (state.swap.confirmedAt | date:'dd/MM/yyyy HH:mm':'-0300') : 'Nao confirmada' }} @if (state.swap.confirmedAt) { <small>{{ state.swap.confirmedBy || 'Autor nao identificado' }}</small> }</td>
+            <td><button type="button" class="btn btn-outline-success btn-sm" [disabled]="busy() || !state.tu.confirmedAt || !!state.swap.confirmedAt || !!state.swap.unavailableReason" (click)="confirmation.set('SWAP')">Confirmar SWAP</button>
+              @if (state.swap.unavailableReason) { <small class="d-block">{{ reasonLabel(state.swap.unavailableReason) }}</small> }
+              @if (!state.tu.confirmedAt && !state.swap.confirmedAt) { <small class="d-block">Confirme a TU primeiro.</small> }</td></tr>
+        </tbody>
+      </table>
+    </div>
+    @if (confirmation(); as action) {
+      <div class="alert alert-warning" role="region" aria-label="Confirmacao da acao">
+        <p>{{ action === 'UNLINK' ? 'Desvincular esta Coatend da Feature?' : 'Confirmar conclusao de ' + action + '?' }}</p>
+        <div class="feature-actions">
+          <button type="button" class="btn btn-success" [disabled]="busy()" (click)="confirm()">Confirmar</button>
+          <button type="button" class="btn btn-outline-secondary" [disabled]="busy()" (click)="confirmation.set(null)">Cancelar</button>
+        </div>
+      </div>
+    }
+  }
+</section>

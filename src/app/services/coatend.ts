@@ -7,6 +7,7 @@ import { CoatendMoveModel } from '../models/coatend/CoatendMoveModel';
 import { CoatendCompleteModel } from '../models/coatend/CoatendCompleteModel';
 import { CoatendModel } from '../models/coatend/CoatendModel';
 import { CoatendPlannerModel } from '../models/components/planner/CoatendPlannerModel';
+import { CoatendMilestoneModel } from '../models/coatend/CoatendMilestoneModel';
 
 @Injectable({ providedIn: 'root' })
 export class CoatendService {
@@ -40,5 +41,13 @@ export class CoatendService {
 
   getPlannerData(): Observable<CoatendPlannerModel[]> {
     return this.http.get<CoatendPlannerModel[]>(`${API_URL}/planner`);
+  }
+
+  getMilestones(id: string): Observable<CoatendMilestoneModel> {
+    return this.http.get<CoatendMilestoneModel>(`${this.baseUrl}/${id}/milestones`);
+  }
+
+  confirmMilestone(id: string, milestone: 'TU' | 'SWAP'): Observable<CoatendMilestoneModel> {
+    return this.http.put<CoatendMilestoneModel>(`${this.baseUrl}/${id}/milestones/${milestone}/confirmation`, {});
   }
 }

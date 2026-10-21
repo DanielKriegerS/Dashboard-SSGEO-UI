@@ -9,11 +9,11 @@
         <p class="planner-modal-eyebrow">Planner</p>
         <h2 id="planner-export-title">Exportar para Excel</h2>
       </div>
-      <button type="button" class="planner-modal-close" aria-label="Fechar" [disabled]="exporting" (click)="close()">×</button>
+      <button type="button" class="planner-modal-close" aria-label="Fechar" [disabled]="busy" (click)="close()">×</button>
     </header>
 
-    <form #exportForm="ngForm" (ngSubmit)="submit()" [attr.aria-busy]="exporting">
-      <fieldset class="planner-modal-fields border-0 p-0" [disabled]="exporting">
+    <form #exportForm="ngForm" (ngSubmit)="submit()" [attr.aria-busy]="busy">
+      <fieldset class="planner-modal-fields border-0 p-0" [disabled]="busy">
         <legend class="visually-hidden">Opções de exportação</legend>
         <label class="planner-form-field">
           <span>Exportar por</span>
@@ -55,39 +55,13 @@
           </select>
         </label>
 
-        <div class="planner-form-field">
-          <label for="planner-export-destination">Local do arquivo</label>
-          <div class="planner-export-destination">
-            <input
-              id="planner-export-destination"
-              type="text"
-              class="form-control"
-              [value]="destination?.name ?? ''"
-              [placeholder]="canChooseDownloadPath ? 'Nenhum local selecionado' : 'Pasta de downloads do navegador'"
-              readonly>
-            <button
-              *ngIf="canChooseDownloadPath"
-              type="button"
-              class="btn btn-outline-secondary"
-              [disabled]="exporting"
-              (click)="chooseDownloadPath()">
-              Escolher...
-            </button>
-          </div>
-          <small *ngIf="canChooseDownloadPath" class="planner-modal-hint">
-            A pasta escolhida é exibida pelo navegador; o caminho completo não fica disponível para a página.
-          </small>
-          <small *ngIf="!canChooseDownloadPath" class="planner-modal-hint">
-            Este navegador não permite escolher o local aqui. O download seguirá a configuração do navegador.
-          </small>
-        </div>
       </fieldset>
       <p *ngIf="validationMessage" class="planner-modal-error" role="status">{{ validationMessage }}</p>
       <p *ngIf="destinationError" class="planner-modal-error" role="alert">{{ destinationError }}</p>
       <footer class="planner-modal-footer">
-        <button type="button" class="btn btn-outline-secondary" [disabled]="exporting" (click)="close()">Cancelar</button>
-        <button type="submit" class="btn btn-primary" [disabled]="exporting || exportForm.invalid || !!validationMessage">
-          {{ exporting ? 'Exportando...' : 'Exportar' }}
+        <button type="button" class="btn btn-outline-secondary" [disabled]="busy" (click)="close()">Cancelar</button>
+        <button type="submit" class="btn btn-primary" [disabled]="busy || exportForm.invalid || !!validationMessage">
+          {{ choosingDestination() ? 'Escolhendo destino...' : exporting ? 'Exportando...' : 'Exportar' }}
         </button>
       </footer>
     </form>

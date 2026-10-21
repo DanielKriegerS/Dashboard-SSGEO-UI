@@ -1,0 +1,7 @@
+:host { display: block; }
+.feature-heading { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; }
+.feature-form { max-width: 680px; }
+.feature-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+.feature-section { border-top: 1px solid #dce2e5; padding-top: 24px; margin-top: 24px; }
+th, td { overflow-wrap: anywhere; }
+input, textarea, select { max-width: 100%; }

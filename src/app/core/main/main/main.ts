@@ -5,7 +5,7 @@ import { PlannerCell } from '../../../models/components/planner/PlannerCell';
 import { TimelineModel } from '../../../models/timeline/TimelineModel';
 import { Planner } from "../../layout/planner/planner";
 import { CoatendService } from '../../../services/coatend';
-import { forkJoin, map, Observable, of, switchMap } from 'rxjs';
+import { forkJoin, map, Observable, of, switchMap, Subscription } from 'rxjs';
 import { TimelineService } from '../../../services/timeline-service';
 import { Quarter as QuarterService } from '../../../services/quarter';
 import { PlannerQuarterGroup } from '../../../models/components/planner/PlannerQuarterGroup';
@@ -37,6 +37,8 @@ import { getActivityDateRanges } from '../../../shared/utils/planner-dates';
 import { PlannerPlaceholderActions } from '../../layout/planner-placeholder-actions/planner-placeholder-actions';
 import { PlannerBlockToolbar } from '../../layout/planner-block-toolbar/planner-block-toolbar';
 import { PlannerExportContextService } from '../../../shared/services/planner-export-context';
+import { FeatureService } from '../../../services/feature';
+import { FeaturePlanningModel, MilestoneWarning } from '../../../models/feature/FeaturePlanningModel';
 
 @Component({
   selector: 'app-main',
@@ -57,6 +59,12 @@ export class Main implements OnInit, OnDestroy{
   plannerComponent?: Planner;
 
   private readonly blockService = inject(PlanningBlockService);
+  private readonly featureService = inject(FeatureService);
+  private featureSubscription?: Subscription;
+  featurePlanning: FeaturePlanningModel[] = [];
+  milestoneWarnings: MilestoneWarning[] = [];
+  featureLoading = false;
+  featureError = '';
 
   plannerData: PlannerRow[] = [];
   plannerHierarchy: PlannerQuarterGroup[] = [];
@@ -181,6 +189,7 @@ export class Main implements OnInit, OnDestroy{
           this.loadPlaceholderPlanner();
         }
 
+        this.loadFeaturePlanning();
         this.cdr.detectChanges();
       },
       error: (err) => {
@@ -218,6 +227,33 @@ export class Main implements OnInit, OnDestroy{
         this.saveBlockFromPlanner(item);
         break;
     }
+  }
+
+  loadFeaturePlanning(): void {
+    this.featureSubscription?.unsubscribe();
+    this.featureLoading = true;
+    this.featureError = '';
+    this.featurePlanning = [];
+    this.milestoneWarnings = [];
+    this.featureSubscription = this.featureService.getAll().pipe(
+      switchMap(features => forkJoin({
+        planning: features.length ? forkJoin(features.map(feature => this.featureService.getPlanning(feature.id))) : of([]),
+        milestones: this.coatendSummaries.length
+          ? forkJoin(this.coatendSummaries.map(coatend => this.coatendService.getMilestones(coatend.id))) : of([])
+      }))
+    ).subscribe({
+      next: result => {
+        this.featurePlanning = result.planning;
+        this.milestoneWarnings = result.milestones.flatMap(state => state.warnings);
+        this.featureLoading = false;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.featureLoading = false;
+        this.featureError = 'Nao foi possivel carregar Features e marcos.';
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   private saveBlockFromPlanner(item: PlannerPlaceholderSubmission): void {
@@ -460,7 +496,15 @@ export class Main implements OnInit, OnDestroy{
       developerId: requiresActivityDeveloper(item.activity) ? item.developerId : null
     };
 
-    this.timelineMutationService.update(item.activityId, payload).subscribe({
+    const ranges = getActivityDateRanges(payload.startDate, payload.endDate, item.includeWeekends !== false);
+    if (!ranges.length) {
+      this.feedback.warning('O período não contém dias úteis.');
+      return;
+    }
+    const update: Observable<TimelineModel | TimelineModel[]> = item.includeWeekends === false
+      ? this.timelineMutationService.updatePeriods(item.activityId, ranges.map(range => ({ ...payload, ...range })))
+      : this.timelineMutationService.update(item.activityId, payload);
+    update.subscribe({
       next: () => this.onPlannerItemSaved('Atividade atualizada com sucesso!'),
       error: error => this.onPlannerItemSaveFailed('atividade', error, 'atualizar')
     });
@@ -472,7 +516,7 @@ export class Main implements OnInit, OnDestroy{
 
   private rejectBlockedActivity(item: PlannerPlaceholderSubmission): boolean {
     const ranges = getActivityDateRanges(item.startDate ?? '', item.endDate ?? '',
-      Boolean(item.activityId) || item.includeWeekends !== false);
+      item.includeWeekends !== false);
     const conflicts = ranges.flatMap(range => getActivityBlockingBlocks(
       this.blocks, item.activity ?? '', item.coatendId ?? '', range.startDate, range.endDate
     ));
@@ -704,9 +748,7 @@ export class Main implements OnInit, OnDestroy{
 
   return this.buildDateSegmentHeaders(
     visibleDays,
-    segments,
-    'Sprint +',
-    this.getFirstUncoveredDate(this.days, segments)
+    segments
   );
   }
 
@@ -799,6 +841,7 @@ export class Main implements OnInit, OnDestroy{
     if (this.days.length > 0) {
       this.updatePlannerWindow();
       this.cdr.detectChanges();
+      this.notifyDisplayChange();
     }
   }
 
@@ -830,6 +873,15 @@ export class Main implements OnInit, OnDestroy{
     this.dayWindowSize = endIndex - startIndex + 1;
     this.updatePlannerWindow();
     this.cdr.detectChanges();
+    this.notifyDisplayChange();
+  }
+
+  private notifyDisplayChange(): void {
+    if (!this.visibleDays.length) return;
+    const formatter = new Intl.DateTimeFormat('pt-BR', { timeZone: 'UTC' });
+    const start = formatter.format(new Date(this.visibleDays[0]));
+    const end = formatter.format(new Date(this.visibleDays[this.visibleDays.length - 1]));
+    this.feedback.info(`Exibição atualizada: ${this.visibleDays.length} dia(s), de ${start} a ${end}.`);
   }
 
   private restorePeriodWindow(): void {
@@ -1221,6 +1273,7 @@ buildDateSegmentHeaders(
   }
 
   ngOnDestroy(): void {
+    this.featureSubscription?.unsubscribe();
     this.exportContext.clear();
   }
 }

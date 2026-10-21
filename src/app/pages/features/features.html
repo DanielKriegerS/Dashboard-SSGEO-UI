@@ -1,0 +1,28 @@
+<header class="feature-heading">
+  <h2 class="h4 mb-0">Features</h2>
+  <a class="btn btn-primary" routerLink="/admin/features/new">Nova Feature</a>
+</header>
+@if (loading()) {
+  <p role="status">Carregando Features...</p>
+} @else if (error()) {
+  <div role="alert" class="alert alert-danger">
+    {{ error() }} <button class="btn btn-sm btn-outline-danger" type="button" (click)="load()">Tentar novamente</button>
+  </div>
+} @else if (!features().length) {
+  <p role="status" class="text-muted">Nenhuma Feature cadastrada.</p>
+} @else {
+  <div class="table-responsive">
+    <table class="table align-middle">
+      <thead><tr><th scope="col">Feature</th><th scope="col">Descricao</th><th scope="col">Coatends</th><th scope="col">Cadastro</th></tr></thead>
+      <tbody>
+        @for (feature of features(); track feature.id) {
+          <tr>
+            <th scope="row"><a [routerLink]="['/admin/features', feature.id]">{{ feature.name }}</a></th>
+            <td>{{ feature.description || '-' }}</td><td>{{ feature.coatends.length }}</td>
+            <td><a [routerLink]="['/admin/features', feature.id]" [attr.aria-label]="'Editar ' + feature.name">Editar</a></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}

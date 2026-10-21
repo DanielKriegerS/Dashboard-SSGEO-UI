@@ -19,4 +19,22 @@ describe('MoveTo', () => {
   it('should create', () => {
     expect(component).toBeTruthy();
   });
+
+  it('starts collapsed in page flow and disables moving without a destination', () => {
+    const element: HTMLElement = fixture.nativeElement;
+    expect(element.querySelector('details')?.open).toBe(false);
+    expect(element.querySelector('.position-fixed')).toBeNull();
+    expect(element.querySelector('button')?.disabled).toBe(true);
+    expect(element.querySelector('select')?.getAttribute('aria-label')).toBe('Mover para');
+  });
+
+  it('moves only to the selected destination and clears the selection', () => {
+    component.moveFn = vi.fn();
+    component.submit();
+    expect(component.moveFn).not.toHaveBeenCalled();
+    component.selectedId = 'sprint-2';
+    component.submit();
+    expect(component.moveFn).toHaveBeenCalledWith('sprint-2');
+    expect(component.selectedId).toBe('');
+  });
 });

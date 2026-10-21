@@ -91,6 +91,40 @@ describe('ExportToolbar', () => {
     expect(close).toHaveBeenCalledOnce();
   });
 
+  it('chooses, requests, writes and closes the modal on the first export submission', async () => {
+    const response = new Subject<Blob>();
+    const exportFile = vi.spyOn(TestBed.inject(PlannerExportService), 'export').mockReturnValue(response);
+    let finishWrite!: () => void;
+    const write = vi.fn().mockReturnValue(new Promise<void>(resolve => { finishWrite = resolve; }));
+    const close = vi.fn().mockResolvedValue(undefined);
+    const destination = { name: 'primeiro-clique.xlsx', createWritable: vi.fn().mockResolvedValue({ write, close }) };
+    const picker = vi.fn().mockResolvedValue(destination);
+    Object.defineProperty(window, 'showSaveFilePicker', { configurable: true, value: picker });
+    try {
+      component.openExportOptions();
+      await component.exportOptions!.submit();
+      fixture.detectChanges();
+      expect(picker).toHaveBeenCalledOnce();
+      expect(exportFile).toHaveBeenCalledExactlyOnceWith({ mode: 'PERIOD', startDate: '2026-10-15', endDate: '2026-10-16' });
+      expect(component.exportOptions!.exporting).toBe(true);
+      const blob = new Blob(['complete workbook']);
+      response.next(blob);
+      response.complete();
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(write).toHaveBeenCalledExactlyOnceWith(blob);
+      expect(component.exportOptions!.opened).toBe(true);
+      expect(close).not.toHaveBeenCalled();
+      finishWrite();
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(close).toHaveBeenCalledOnce();
+      expect(component.exporting).toBe(false);
+      expect(component.exportOptions!.opened).toBe(false);
+    } finally {
+      delete (window as Window & { showSaveFilePicker?: unknown }).showSaveFilePicker;
+    }
+  });
+
   it('should keep export options open for retry after a server error', () => {
     const log = vi.spyOn(console, 'error').mockImplementation(() => {});
     const feedback = vi.spyOn(TestBed.inject(FeedbackService), 'error');

@@ -16,11 +16,12 @@ import { TimelineService } from '../../services/timeline-service';
 import { DeveloperService } from '../../services/developer-service';
 import { FormsModule } from '@angular/forms';
 import { FeedbackService } from '../../services/feedback';
+import { CoatendFeature } from './coatend-feature';
 
 @Component({
   standalone: true,
   templateUrl: './coatend.html',
-  imports: [CommonModule, MoveTo, DynamicEditComponent, DeleteButton, FormsModule, RouterLink]
+  imports: [CommonModule, MoveTo, DynamicEditComponent, DeleteButton, FormsModule, RouterLink, CoatendFeature]
 })
 export class CoatendComponent implements OnInit {
 

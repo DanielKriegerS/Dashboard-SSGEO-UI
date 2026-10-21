@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { PlannerExportRequest } from '../../../models/components/planner/PlannerExportRequest';
 import { PlannerDisplaySelection } from '../../../models/components/planner/PlannerDisplaySelection';
@@ -30,12 +30,19 @@ export class PlannerExportOptions {
   sprintId = '';
   destination: PlannerExportFileHandle | null = null;
   destinationError = '';
+  readonly choosingDestination = signal(false);
+
+  get busy(): boolean {
+    return this.exporting || this.choosingDestination();
+  }
 
   get canChooseDownloadPath(): boolean {
     return typeof window !== 'undefined' && 'showSaveFilePicker' in window;
   }
 
   open(selection: PlannerDisplaySelection, visibleDays: string[]): void {
+    this.destination = null;
+    this.destinationError = '';
     this.mode = selection.type === 'count' ? 'COUNT' : 'PERIOD';
     this.startDate = visibleDays[0] ?? '';
     this.endDate = visibleDays[visibleDays.length - 1] ?? '';
@@ -46,9 +53,14 @@ export class PlannerExportOptions {
   }
 
   close(): void {
-    if (!this.exporting) {
+    if (!this.busy) {
       this.opened = false;
     }
+  }
+
+  completeExport(): void {
+    this.opened = false;
+    this.destination = null;
   }
 
   closeOnBackdrop(event: MouseEvent): void {
@@ -58,9 +70,6 @@ export class PlannerExportOptions {
   }
 
   get validationMessage(): string {
-    if (this.canChooseDownloadPath && !this.destination) {
-      return 'Escolha um local para salvar o arquivo.';
-    }
     if (this.mode === 'QUARTER') {
       return this.quarters.some(quarter => quarter.id === this.quarterId)
         ? '' : 'Selecione um Quarter para exportar.';
@@ -104,30 +113,45 @@ export class PlannerExportOptions {
         }]
       });
     } catch (error) {
-      if (!(error instanceof Error && error.name === 'AbortError')) {
+      const cancelled = error !== null && typeof error === 'object'
+        && 'name' in error && error.name === 'AbortError';
+      if (!cancelled) {
         this.destinationError = 'Não foi possível selecionar o local do arquivo.';
       }
     }
   }
 
-  submit(): void {
-    if (this.exporting || this.validationMessage) {
+  async submit(): Promise<void> {
+    if (this.busy || this.validationMessage) {
       return;
     }
+    let request: PlannerExportRequest;
     switch (this.mode) {
       case 'COUNT':
-        this.emitExport({ mode: this.mode, startDate: this.startDate, count: this.count });
+        request = { mode: this.mode, startDate: this.startDate, count: this.count };
         break;
       case 'PERIOD':
-        this.emitExport({ mode: this.mode, startDate: this.startDate, endDate: this.endDate });
+        request = { mode: this.mode, startDate: this.startDate, endDate: this.endDate };
         break;
       case 'QUARTER':
-        this.emitExport({ mode: this.mode, quarterId: this.quarterId });
+        request = { mode: this.mode, quarterId: this.quarterId };
         break;
       case 'SPRINT':
-        this.emitExport({ mode: this.mode, sprintId: this.sprintId });
+        request = { mode: this.mode, sprintId: this.sprintId };
         break;
     }
+    if (this.canChooseDownloadPath && !this.destination) {
+      this.choosingDestination.set(true);
+      try {
+        await this.chooseDownloadPath();
+      } finally {
+        this.choosingDestination.set(false);
+      }
+      if (!this.destination) {
+        return;
+      }
+    }
+    this.emitExport(request);
   }
 
   private emitExport(request: PlannerExportRequest): void {

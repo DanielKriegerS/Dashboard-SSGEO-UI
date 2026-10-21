@@ -2,6 +2,22 @@
   min-width: 0;
 }
 
+.planner-feature-phase { display: grid; grid-template-columns: minmax(0, 1fr); align-items: center; min-height: 34px; padding: 0.4rem 0.5rem; font-size: 0.75rem; color: inherit; text-decoration: none; }
+.planner-feature-name, .planner-feature-percent { grid-area: 1 / 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.planner-feature-percent { opacity: 0; font-weight: 700; }
+.planner-feature-phase:hover .planner-feature-name, .planner-feature-phase:focus-visible .planner-feature-name { opacity: 0; }
+.planner-feature-phase:hover .planner-feature-percent, .planner-feature-phase:focus-visible .planner-feature-percent { opacity: 1; }
+.planner-table .planner-feature-cell { height: 34px; padding: 0; }
+.planner-feature-row .planner-fixed-column { height: 34px; padding: 0; }
+.planner-table .planner-feature-development { --bs-table-bg: #09b7df; color: #082c38; }
+.planner-table .planner-feature-homologation { --bs-table-bg: #dda6df; color: #4b1f4e; }
+.planner-milestone-warning { color: #784200; font-size: 0.75rem; white-space: normal; overflow-wrap: anywhere; }
+.planner-milestone-warning summary { position: absolute; top: 4px; right: 4px; display: grid; place-items: center; width: 22px; height: 22px; border: 1px solid #b77800; border-radius: 50%; background: #fff3cd; font-weight: 700; cursor: pointer; list-style: none; }
+.planner-milestone-warning summary::-webkit-details-marker { display: none; }
+.planner-warning-content { margin-top: 0.5rem; }
+.planner-warning-content p { margin: 6px 0; }
+.planner-milestone-warning summary:focus-visible, .planner-feature-phase:focus-visible { outline: 3px solid #2563eb; outline-offset: -2px; }
+
 
 .planner-weekend-legend {
   display: flex;
@@ -22,10 +38,13 @@
 }
 
 .planner-table-container {
+  --planner-day-width: 96px;
+  --planner-label-width: 220px;
   width: 100%;
+  max-height: 70dvh;
   overflow: auto;
-  border: 1px solid #dbe3ec;
-  border-radius: 0.75rem;
+  border: 1px solid #8996a4;
+  border-radius: 0.4rem;
   background: #fff;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
@@ -35,12 +54,17 @@
   width: max-content;
   min-width: 100%;
   margin: 0;
-  border-color: #dbe3ec;
+  border-collapse: collapse;
+  border-color: #8996a4;
   table-layout: fixed;
 }
 
+.planner-label-track { width: var(--planner-label-width); }
+.planner-date-track { width: var(--planner-day-width); }
+
 .planner-table th,
 .planner-table td {
+  border: 1px solid #8996a4;
   min-width: 96px;
   height: 48px;
   padding: 0.5rem;
@@ -49,8 +73,8 @@
 }
 
 .planner-fixed-column {
-  width: 200px;
-  min-width: 200px !important;
+  width: var(--planner-label-width);
+  min-width: var(--planner-label-width) !important;
   position: sticky;
   left: 0;
   background: #fff;
@@ -58,14 +82,27 @@
   box-shadow: 3px 0 6px rgb(15 23 42 / 8%);
 }
 
-.planner-table thead th {
+.planner-coatend-cell { padding-right: 32px !important; }
+.planner-coatend-cell .planner-edit-label { overflow-wrap: anywhere; }
+
+.planner-table thead {
   position: sticky;
   top: 0;
-  z-index: 1;
+  z-index: 3;
+  background: #fff;
+}
+
+.planner-table thead th {
+  position: static;
 }
 
 .planner-table thead .planner-fixed-column {
+  position: sticky;
   z-index: 4;
+}
+
+.planner-add-sprint {
+  margin-left: 0.5rem;
 }
 
 .planner-quarter-header {
@@ -203,6 +240,7 @@
 }
 
 @media (max-width: 575.98px) {
+  .planner-table-container { --planner-day-width: 84px; --planner-label-width: 160px; }
   .planner-table th,
   .planner-table td {
     min-width: 84px;
@@ -210,7 +248,7 @@
   }
 
   .planner-fixed-column {
-    width: 160px;
-    min-width: 160px !important;
+    width: var(--planner-label-width);
+    min-width: var(--planner-label-width) !important;
   }
 }

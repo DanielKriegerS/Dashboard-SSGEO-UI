@@ -1,0 +1,78 @@
+<header class="feature-heading"><h2 class="h4 mb-0">{{ id ? 'Editar Feature' : 'Nova Feature' }}</h2><a routerLink="/admin/features">Voltar para Features</a></header>
+@if (loading()) {
+  <p role="status">Carregando Feature...</p>
+}
+@if (error()) {
+  <p class="alert alert-danger" role="alert">{{ error() }}</p>
+  @if (id && !feature()) { <button type="button" class="btn btn-outline-secondary" (click)="load()">Tentar novamente</button> }
+}
+@if (notice()) { <p class="alert alert-success" role="status">{{ notice() }}</p> }
+@if (!loading() && (!id || feature())) {
+  <form class="feature-form" [formGroup]="form" (ngSubmit)="save()">
+    <label class="form-label" for="feature-name">Nome</label>
+    <input class="form-control mb-3" id="feature-name" formControlName="name" required>
+    @if (form.controls.name.touched && form.controls.name.invalid) { <p class="text-danger" role="alert">Informe o nome da Feature.</p> }
+    <label class="form-label" for="feature-description">Descricao</label>
+    <textarea class="form-control" id="feature-description" formControlName="description" rows="3"></textarea>
+    <div class="feature-actions">
+      <button class="btn btn-primary" type="submit" [disabled]="saving() || form.invalid">{{ saving() ? 'Salvando...' : 'Salvar' }}</button>
+      <a class="btn btn-outline-secondary" routerLink="/admin/features">Cancelar</a>
+    </div>
+  </form>
+  @if (feature(); as current) {
+    <section class="feature-section" aria-labelledby="feature-coatends">
+      <h3 class="h5" id="feature-coatends">Coatends vinculadas ({{ current.coatends.length }})</h3>
+      @if (!current.coatends.length) { <p class="text-muted">Nenhuma Coatend vinculada.</p> }
+      @for (coatend of current.coatends; track coatend.id) {
+        <div class="feature-actions"><a [routerLink]="['/coatends', coatend.id]">{{ coatend.coatendNumber }} - {{ coatend.description }}</a> · Peso: {{ coatend.weight ?? 'Nao informado' }}
+          <button class="btn btn-outline-danger btn-sm" type="button" [disabled]="saving()" (click)="confirmingUnlink.set(coatend.id)">Desvincular</button>
+        </div>
+      }
+      @if (confirmingUnlink()) {
+        <p>Desvincular a Coatend? Atividades e confirmacoes serao mantidas.</p>
+        <div class="feature-actions">
+          <button type="button" class="btn btn-danger" [disabled]="saving()" (click)="unlink()">Confirmar desvinculo</button>
+          <button type="button" class="btn btn-outline-secondary" [disabled]="saving()" (click)="confirmingUnlink.set(null)">Cancelar</button>
+        </div>
+      }
+      <form class="feature-form" [formGroup]="linkForm" (ngSubmit)="saveLink()">
+        <label class="form-label" for="feature-link-coatend">Coatend</label>
+        <select class="form-select mb-3" id="feature-link-coatend" formControlName="coatendId" (change)="selectCoatend()">
+          <option value="">Selecione uma Coatend</option>
+          @for (coatend of availableCoatends(); track coatend.id) { <option [value]="coatend.id">{{ coatend.coatendNumber }} - {{ coatend.description }}</option> }
+        </select>
+        <label class="form-label" for="feature-link-weight">Peso (opcional)</label>
+        <input class="form-control" id="feature-link-weight" type="number" step="any" formControlName="weight">
+        @if (linkForm.controls.weight.invalid) { <p role="alert" class="text-danger">O peso deve ser maior que zero.</p> }
+        <button class="btn btn-primary mt-3" type="submit" [disabled]="saving() || linkForm.invalid">Salvar vinculo e peso</button>
+      </form>
+    </section>
+    @if (planning(); as data) {
+      <section class="feature-section" aria-labelledby="feature-planning-heading">
+        <h3 class="h5" id="feature-planning-heading">Planejamento</h3>
+        <p class="text-muted">Referencia: {{ data.referenceDate | date:'dd/MM/yyyy' }} · {{ data.zone }}</p>
+        @for (phase of [{ name: 'Desenvolvimento', value: data.development }, { name: 'Homologacao', value: data.homologation }]; track phase.name) {
+          <h4 class="h6">{{ phase.name }}</h4>
+          <p>Estimativa: {{ phase.value.estimatedPercent === null ? 'Indisponivel' : (phase.value.estimatedPercent | number:'1.0-2') + '%' }} · {{ phase.value.confirmed ? 'Conclusao confirmada' : 'Conclusao nao confirmada' }}</p>
+          <p>Previsao: {{ phase.value.plannedStart ? (phase.value.plannedStart | date:'dd/MM/yyyy') : '-' }} a {{ phase.value.plannedEnd ? (phase.value.plannedEnd | date:'dd/MM/yyyy') : '-' }}</p>
+          @for (reason of phase.value.unavailableReasons; track reason) { <p>{{ reasonLabel(reason) }}</p> }
+          @for (limitation of phase.value.limitations; track limitation) { <p role="status">{{ reasonLabel(limitation) }}</p> }
+        }
+        <p>Inicio efetivo da homologacao: {{ data.homologation.effectiveStart ? (data.homologation.effectiveStart | date:'dd/MM/yyyy') : 'Aguardando todas as TUs' }}</p>
+        <p>{{ data.pendingCoatendCount }} Coatend(s) com confirmacao pendente.</p>
+        @for (warning of data.warnings; track warning.coatendId + warning.milestone) { <p class="text-warning-emphasis">{{ warningLabel(warning) }}</p> }
+      </section>
+    }
+    <section class="feature-section" aria-label="Excluir Feature">
+      @if (confirmingDelete()) {
+        <p>Excluir a Feature {{ current.name }}?</p>
+        <div class="feature-actions">
+          <button class="btn btn-danger" type="button" [disabled]="saving()" (click)="remove()">Confirmar exclusao</button>
+          <button class="btn btn-outline-secondary" type="button" [disabled]="saving()" (click)="confirmingDelete.set(false)">Manter Feature</button>
+        </div>
+      } @else {
+        <button class="btn btn-outline-danger" type="button" [disabled]="saving()" (click)="confirmingDelete.set(true)">Excluir Feature</button>
+      }
+    </section>
+  }
+}
