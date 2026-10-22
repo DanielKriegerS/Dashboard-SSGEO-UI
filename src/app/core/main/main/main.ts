@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, inject, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { ChangeDetectorRef, Component, inject, OnDestroy, OnInit, signal, ViewChild } from '@angular/core';
 import { Meta, Title } from '@angular/platform-browser';
 import { PlannerRow } from '../../../models/components/planner/PlannerRow';
 import { PlannerCell } from '../../../models/components/planner/PlannerCell';
@@ -52,6 +52,8 @@ import { FeaturePlanningModel, MilestoneWarning } from '../../../models/feature/
   styleUrl: './main.scss',
 })
 export class Main implements OnInit, OnDestroy{
+  readonly plannerHeaderCollapsed = signal(false);
+
   @ViewChild('placeholderActions')
   placeholderActions?: PlannerPlaceholderActions;
 

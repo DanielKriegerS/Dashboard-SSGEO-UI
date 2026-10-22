@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output, signal } from '@angular/core';
+import { Component, EventEmitter, Input, output, Output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { PlannerExportRequest } from '../../../models/components/planner/PlannerExportRequest';
 import { PlannerDisplaySelection } from '../../../models/components/planner/PlannerDisplaySelection';
@@ -16,6 +16,7 @@ export class PlannerExportOptions {
   @Input() quarters: QuarterSummary[] = [];
   @Input() sprints: SprintSummary[] = [];
   @Input() exporting = false;
+  readonly backRequested = output<void>();
   @Output() exportRequested = new EventEmitter<{
     request: PlannerExportRequest;
     destination: PlannerExportFileHandle | null;
@@ -55,6 +56,14 @@ export class PlannerExportOptions {
   close(): void {
     if (!this.busy) {
       this.opened = false;
+    }
+  }
+
+  returnToGenerationOptions(): void {
+    if (!this.busy) {
+      this.opened = false;
+      this.destination = null;
+      this.backRequested.emit();
     }
   }
 

@@ -7,7 +7,7 @@
     type="button"
     class="planner-export-button"
     (click)="openGenerationOptions()"
-    [disabled]="exporting"
+    [disabled]="exporting || swapGenerating()"
     aria-haspopup="dialog"
     [attr.title]="exporting ? 'Exportando planner' : 'Exportar / Gerar'"
     [attr.aria-label]="exporting ? 'Exportando planner' : 'Exportar / Gerar'">
@@ -24,14 +24,14 @@
   #generationDialog
   class="generation-modal"
   aria-labelledby="generation-modal-title"
-  (cancel)="closeGenerationDialog()"
+  (cancel)="$event.preventDefault(); closeGenerationDialog()"
   (close)="activeDialog.set(null)"
   (click)="closeOnBackdrop($event)">
   <header class="generation-modal-header">
     <h2 id="generation-modal-title" tabindex="-1" data-initial-focus>
       {{ activeDialog() === 'swap' ? 'Gerar documento de SWAP' : 'Exportar / Gerar' }}
     </h2>
-    <button type="button" class="generation-icon-button" aria-label="Fechar" title="Fechar" (click)="closeGenerationDialog()">
+    <button type="button" class="generation-icon-button" aria-label="Fechar" title="Fechar" [disabled]="swapGenerating()" (click)="closeGenerationDialog()">
       <span class="generation-icon icon-close" aria-hidden="true"></span>
     </button>
   </header>
@@ -55,23 +55,110 @@
       <p class="generation-status" role="status">Nenhum período do planner disponível para exportar.</p>
     }
   } @else if (activeDialog() === 'swap') {
-    <div class="generation-swap-fields">
-      <label for="swap-export-date">Data de SWAP</label>
-      <select id="swap-export-date" class="form-select" disabled>
-        <option>Datas não consultadas</option>
+    <div class="generation-swap-fields" [attr.aria-busy]="swapLoading() || swapGenerating()">
+      <div class="generation-swap-label">
+        <label for="swap-export-date">Data de SWAP</label>
+        <button type="button" class="btn btn-outline-secondary btn-sm" [disabled]="swapLoading() || swapGenerating()" (click)="loadSwapDates()">Atualizar datas</button>
+      </div>
+      <select #swapDate id="swap-export-date" class="form-select"
+        [value]="selectedSwapDate()"
+        [disabled]="swapLoading() || swapGenerating() || !!swapError() || swapDates().length === 0"
+        (change)="selectSwapDate(swapDate.value)"
+        aria-describedby="swap-export-status">
+        <option value="" disabled>Selecione uma data</option>
+        @for (option of swapDates(); track option.date) {
+          <option [value]="option.date" [disabled]="option.confirmed.length === 0">
+            {{ option.date | date:'dd/MM/yyyy':'UTC' }} —
+            @if (option.confirmed.length > 0) {
+              {{ option.confirmed.length }} {{ option.confirmed.length === 1 ? 'confirmada' : 'confirmadas' }}
+              @if (option.pending.length > 0) { · {{ option.pending.length }} {{ option.pending.length === 1 ? 'pendente' : 'pendentes' }} }
+            } @else { Sem confirmação }
+          </option>
+        }
       </select>
+      <div id="swap-export-status">
+        @if (swapLoading()) {
+          <p class="generation-status" role="status">Consultando datas de SWAP...</p>
+        } @else if (swapError()) {
+          <p class="generation-error" role="alert">{{ swapError() }}</p>
+          <button type="button" class="btn btn-outline-secondary btn-sm" (click)="loadSwapDates()">Tentar novamente</button>
+        } @else if (swapDates().length === 0) {
+          <p class="generation-status" role="status">Nenhuma data de SWAP cadastrada.</p>
+        } @else if (!hasConfirmedSwap()) {
+          <p class="generation-warning" role="status">Nenhuma data possui SWAP confirmado. As datas pendentes estão indisponíveis para seleção.</p>
+        } @else {
+          <p class="generation-status">Somente COATENDs com SWAP confirmado serão incluídas.</p>
+        }
+      </div>
+      @if (selectedSwap(); as selected) {
+        <section class="generation-swap-selection" aria-labelledby="swap-selection-title" aria-live="polite">
+          <h3 id="swap-selection-title">SWAP selecionado: {{ selected.date | date:'dd/MM/yyyy':'UTC' }}</h3>
+          <p class="generation-confirmed">COATENDs confirmadas: {{ selected.confirmed.length }}</p>
+          <ul class="generation-coatends">
+            @for (coatend of selected.confirmed; track coatend.id) {
+              <li><strong>COATEND-{{ coatend.coatendNumber }}</strong><span>{{ coatend.description }}</span></li>
+            }
+          </ul>
+          @if (selected.pending.length > 0) {
+            <p class="generation-warning">COATENDs sem confirmação: {{ selected.pending.length }}. Ficarão fora do documento:</p>
+            <ul class="generation-coatends generation-pending-coatends">
+              @for (coatend of selected.pending; track coatend.id) {
+                <li><strong>COATEND-{{ coatend.coatendNumber }}</strong><span>{{ coatend.description }}</span></li>
+              }
+            </ul>
+          }
+        </section>
+        @if (!swapResult()) {
+          <label for="swap-upload">Planilhas técnicas (XLSX)</label>
+          <input id="swap-upload" type="file" class="form-control" accept=".xlsx" multiple
+            [disabled]="swapGenerating()" (change)="onSwapFilesSelected($event)" aria-describedby="swap-files-status">
+          <ul class="generation-files">
+            @for (file of swapFiles(); track file) {
+              <li>
+                <span>{{ file.name }}</span>
+                <button type="button" class="generation-icon-button" [disabled]="swapGenerating()"
+                  [attr.aria-label]="'Remover ' + file.name" [attr.title]="'Remover ' + file.name" (click)="removeSwapFile(file)">
+                  <span class="generation-icon icon-close" aria-hidden="true"></span>
+                </button>
+              </li>
+            }
+          </ul>
+          <p id="swap-files-status" class="generation-warning" role="status">{{ swapFileError() }}</p>
+        }
+      }
+      @if (swapGenerating()) {
+        <p class="generation-status" role="status">Gerando e salvando documento de SWAP...</p>
+      }
+      @if (swapGenerationError()) {
+        <p class="generation-error" role="alert">{{ swapGenerationError() }}</p>
+      }
+      @if (swapResult(); as result) {
+        <section class="generation-result" aria-label="Resultado da geração">
+          <p role="status" class="generation-confirmed">{{ swapSaved() ? 'Documento SWAP salvo. Minuta para revisão humana.' : 'Documento SWAP gerado. Salvamento pendente.' }}</p>
+          <div class="generation-result-actions">
+            <button type="button" class="btn btn-outline-secondary btn-sm" [disabled]="swapGenerating()" (click)="saveGeneratedSwap()">Salvar DOCX novamente</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" [disabled]="swapGenerating()" (click)="downloadSwapReview()">Baixar relatório de revisão</button>
+          </div>
+          <details>
+            <summary>Relatório de revisão e pendências</summary>
+            <pre>{{ result.review }}</pre>
+          </details>
+        </section>
+      }
     </div>
     <footer class="generation-modal-footer">
-      <button type="button" class="btn btn-outline-secondary generation-back-button" (click)="openGenerationOptions()">
+      <button type="button" class="btn btn-outline-secondary generation-back-button" [disabled]="swapGenerating()" (click)="openGenerationOptions()">
         <span class="generation-icon icon-back" aria-hidden="true"></span>
         Voltar
       </button>
-      <button type="button" class="btn btn-primary" disabled title="Geração indisponível nesta etapa">Gerar Doc. SWAP</button>
+      <button type="button" class="btn btn-primary" [disabled]="swapGenerating() || swapLoading() || !selectedSwap() || !!swapFileError() || !!swapResult()"
+        (click)="generateSwap()">{{ swapGenerating() ? 'Gerando...' : 'Gerar Doc. SWAP' }}</button>
     </footer>
   }
 </dialog>
 
 <app-planner-export-options
   [exporting]="exporting"
+  (backRequested)="openGenerationOptions()"
   (exportRequested)="exportPlanner($event)">
 </app-planner-export-options>

@@ -28,6 +28,20 @@ ng generate --help
 
 ## Planner weekends
 
+The planner's **Recolher cabecalho / Expandir cabecalho** control hides or shows
+the full heading, day display options and block toolbar. When collapsed, a compact
+strip keeps **Planner - SSGEO**, the visible date range and previous/next buttons
+available beside the expand control. Period navigation uses the same handlers
+in both layouts; full dates remain available in the range tooltip.
+The planner table remains visible. Display/block controls stay mounted and retain
+their state; toggling does not reload data or change the selected period. The
+header starts expanded. On small screens, the compact strip wraps into two rows
+and the expand control is a labelled 44px icon button.
+
+Planner cells use separate borders with zero spacing and only right/bottom lines.
+This avoids collapsed-border repaint loss on sticky date/Coatend cells after
+header toggles, without remounting the table or resetting its scroll position.
+
 Saturday and Sunday columns have a different background and explicit weekday
 labels. Weekend cells remain clickable, including cells that already contain
 activities and placeholder rows. New activities have an unchecked **Incluir fins
@@ -91,6 +105,40 @@ Focused block/planner validation:
 ```bash
 npm test -- --watch=false --ts-config=tsconfig.planner.spec.json --include=src/app/core/main/main/main.spec.ts --include=src/app/core/layout/planner/planner.spec.ts --include=src/app/core/layout/planner-placeholder-actions/planner-placeholder-actions.spec.ts --include=src/app/services/planning-block.spec.ts --include=src/app/shared/utils/planner-blocks.spec.ts
 ```
+
+## SWAP document generation
+
+**Exportar / Gerar** opens the choice between the existing Excel export and
+**Gerar documento de SWAP**. The Excel dialog now has **Voltar**, returning to
+the chooser without exporting; navigation is blocked while saving.
+
+SWAP dates without confirmations remain visible but cannot be selected.
+For a mixed date, only confirmed Coatends are included; pending ones are listed
+as excluded. The selected planned date, numbers and descriptions are shown
+before generation.
+
+Upload the technical XLSX files for every included Coatend. Each filename must
+identify one number, such as `COATEND8579.xlsx`. Missing, extra, ambiguous and
+duplicate files prevent generation. Limits are 20 files, 10 MB each and 50 MB
+total. The backend also validates content and rechecks the authoritative scope.
+
+**Gerar Doc. SWAP** selects a DOCX destination before uploading when the browser
+supports `showSaveFilePicker`. Cancelling the picker does not generate or upload.
+Other browsers use their normal download destination/settings, as with Excel.
+The backend must be running with the generator configured; see its README.
+
+The result remains a draft for human review. The modal displays the separate
+review report and offers its Markdown download. It never adds the report to
+the operational DOCX. **Salvar DOCX novamente** retries saving the retained
+result without requesting another generation. Server processing copies are
+temporary; changing the selection or closing clears the modal's retained data.
+
+Verified on 2026-10-22: 51 focused frontend tests and a development build pass.
+The Python/PowerShell generator and multipart backend produced real DOCX files
+in isolated tests. Browser Excel return was exercised against the real app.
+The mobile upload layout was checked with a browser-only simulated confirmation,
+without creating a production confirmation or requesting generation in that
+scenario. Actual source fidelity still requires human review.
 
 ## Planner Excel export
 

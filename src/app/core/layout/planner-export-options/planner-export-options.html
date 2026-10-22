@@ -59,6 +59,7 @@
       <p *ngIf="validationMessage" class="planner-modal-error" role="status">{{ validationMessage }}</p>
       <p *ngIf="destinationError" class="planner-modal-error" role="alert">{{ destinationError }}</p>
       <footer class="planner-modal-footer">
+        <button type="button" class="btn btn-outline-secondary" [disabled]="busy" (click)="returnToGenerationOptions()">Voltar</button>
         <button type="button" class="btn btn-outline-secondary" [disabled]="busy" (click)="close()">Cancelar</button>
         <button type="submit" class="btn btn-primary" [disabled]="busy || exportForm.invalid || !!validationMessage">
           {{ choosingDestination() ? 'Escolhendo destino...' : exporting ? 'Exportando...' : 'Exportar' }}

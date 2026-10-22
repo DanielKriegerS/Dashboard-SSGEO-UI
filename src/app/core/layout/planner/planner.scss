@@ -54,7 +54,8 @@
   width: max-content;
   min-width: 100%;
   margin: 0;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   border-color: #8996a4;
   table-layout: fixed;
 }
@@ -64,7 +65,9 @@
 
 .planner-table th,
 .planner-table td {
-  border: 1px solid #8996a4;
+  border: 0;
+  border-right: 1px solid #8996a4;
+  border-bottom: 1px solid #8996a4;
   min-width: 96px;
   height: 48px;
   padding: 0.5rem;

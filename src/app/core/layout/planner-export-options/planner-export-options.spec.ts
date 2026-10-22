@@ -21,6 +21,27 @@ describe('PlannerExportOptions', () => {
     expect(component.startDate).toBe('2026-10-08');
   });
 
+  it('returns to the chooser without exporting a file', () => {
+    const back = vi.spyOn(component.backRequested, 'emit');
+    const exported = vi.spyOn(component.exportRequested, 'emit');
+    component.returnToGenerationOptions();
+    expect(component.opened).toBe(false);
+    expect(back).toHaveBeenCalledOnce();
+    expect(exported).not.toHaveBeenCalled();
+  });
+
+  it('blocks returning while choosing a destination or exporting', () => {
+    const back = vi.spyOn(component.backRequested, 'emit');
+    component.choosingDestination.set(true);
+    component.returnToGenerationOptions();
+    expect(component.opened).toBe(true);
+    component.choosingDestination.set(false);
+    component.exporting = true;
+    component.returnToGenerationOptions();
+    expect(component.opened).toBe(true);
+    expect(back).not.toHaveBeenCalled();
+  });
+
   it('should populate period from the current page and not mutate the display', () => {
     const selection = { type: 'period' as const, startDate: '2026-10-01', endDate: '2026-10-02' };
     component.open(selection, ['2026-10-08', '2026-10-09']);

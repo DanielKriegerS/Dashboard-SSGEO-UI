@@ -1,4 +1,5 @@
 import { MilestoneWarning } from '../feature/FeaturePlanningModel';
+import { CoatendSummary } from './CoatendSummary';
 
 export interface MilestoneState {
   plannedEnd: string | null;
@@ -14,4 +15,10 @@ export interface CoatendMilestoneModel {
   tu: MilestoneState;
   swap: MilestoneState;
   warnings: MilestoneWarning[];
+}
+
+export interface SwapDateOption {
+  date: string;
+  confirmed: CoatendSummary[];
+  pending: CoatendSummary[];
 }

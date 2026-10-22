@@ -8,6 +8,89 @@
   margin-bottom: 1.5rem;
 }
 
+.planner-header-toggle-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.5rem;
+}
+
+.planner-header-toggle-row.is-compact {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, auto) auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding-block: 0.25rem 0.5rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.planner-compact-title {
+  margin: 0;
+  min-width: 0;
+  color: #1f2937;
+  font-size: 1rem;
+  line-height: 1.4;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.is-compact .planner-date-navigation {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.is-compact .planner-date-range {
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+.planner-header-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  color: #475569;
+  background: transparent;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.planner-header-toggle:hover {
+  color: #1e293b;
+  background: #eef2f6;
+}
+
+.planner-header-toggle:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.planner-header-chevron {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  background: currentColor;
+  mask: url('/icons/chevron-right.svg') center / contain no-repeat;
+  transform: rotate(-90deg);
+}
+
+.planner-header-chevron.is-collapsed {
+  transform: rotate(90deg);
+}
+
+.planner-header-content {
+  min-width: 0;
+}
+
+.planner-header-content[hidden] {
+  display: none;
+}
+
 .planner-eyebrow {
   margin-bottom: 0.35rem;
   color: #536579;
@@ -22,6 +105,7 @@
   color: #1f2937;
   font-size: clamp(1.5rem, 2.5vw, 2rem);
   font-weight: 700;
+  overflow-wrap: anywhere;
 }
 
 .planner-description {
@@ -72,7 +156,39 @@
   color: #1e293b;
 }
 
+@media (max-width: 900px) {
+  .planner-header-toggle-row.is-compact {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .is-compact .planner-date-navigation {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}
+
 @media (max-width: 575.98px) {
+  .is-compact .planner-header-toggle {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+  }
+
+  .is-compact .planner-header-toggle > span:first-child {
+    display: none;
+  }
+
+  .planner-toolbar {
+    flex-direction: column;
+  }
+
+  .planner-toolbar app-planner-display-options,
+  .planner-block-toolbar-container,
+  .planner-block-toolbar {
+    width: 100%;
+    min-width: 0;
+  }
+
   .planner-heading {
     margin-bottom: 1rem;
   }

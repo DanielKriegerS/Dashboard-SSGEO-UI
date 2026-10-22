@@ -11,6 +11,8 @@
     "src/app/shared/services/planner-export-context.spec.ts",
     "src/app/core/main/main/main.spec.ts",
     "src/app/services/planning-block.spec.ts",
+    "src/app/services/coatend.spec.ts",
+    "src/app/services/swap-document.spec.ts",
     "src/app/services/feature.spec.ts",
     "src/app/pages/feature/feature.spec.ts",
     "src/app/pages/coatend/coatend-feature.spec.ts",

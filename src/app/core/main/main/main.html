@@ -1,4 +1,21 @@
 <main class="row planner-page">
+  <div class="planner-header-toggle-row" [class.is-compact]="plannerHeaderCollapsed()">
+    @if (plannerHeaderCollapsed()) {
+      <h1 class="planner-compact-title">Planner - SSGEO</h1>
+      <ng-container *ngTemplateOutlet="periodNavigation"></ng-container>
+    }
+    <button type="button" class="planner-header-toggle"
+      [attr.aria-label]="plannerHeaderCollapsed() ? 'Expandir cabeçalho' : 'Recolher cabeçalho'"
+      [attr.aria-expanded]="!plannerHeaderCollapsed()"
+      aria-controls="planner-header-content"
+      [attr.title]="plannerHeaderCollapsed() ? 'Expandir cabeçalho' : 'Recolher cabeçalho'"
+      (click)="plannerHeaderCollapsed.update(value => !value)">
+      <span>{{ plannerHeaderCollapsed() ? 'Expandir cabeçalho' : 'Recolher cabeçalho' }}</span>
+      <span class="planner-header-chevron" [class.is-collapsed]="plannerHeaderCollapsed()" aria-hidden="true"></span>
+    </button>
+  </div>
+
+  <div id="planner-header-content" class="planner-header-content" [hidden]="plannerHeaderCollapsed()">
   <header class="row planner-heading text-center">
     <h1>Planner - Squad Sustentação GEO</h1>
     <p class="planner-description">
@@ -26,35 +43,8 @@
     
   </div>
 
-  <nav class="planner-date-navigation" aria-label="Navegação do período">
-    <button
-      type="button"
-      class="btn btn-outline-primary planner-navigation-button"
-      (click)="previousDays()"
-      [disabled]="dayWindowStart === 0"
-      aria-label="Exibir período anterior">
-      <span aria-hidden="true">←</span>
-    </button>
-
-    <span class="planner-date-range" aria-live="polite">
-      <ng-container *ngIf="visibleDays.length > 0; else loadingRange">
-        Exibindo
-        <strong>{{ visibleDays[0] | date:'dd/MM/yyyy' }}</strong>
-        até
-        <strong>{{ visibleDays[visibleDays.length - 1] | date:'dd/MM/yyyy' }}</strong>
-      </ng-container>
-      <ng-template #loadingRange>Carregando período...</ng-template>
-    </span>
-
-    <button
-      type="button"
-      class="btn btn-outline-primary planner-navigation-button"
-      (click)="nextDays()"
-      [disabled]="dayWindowStart + dayWindowSize >= days.length"
-      aria-label="Exibir próximo período">
-      <span aria-hidden="true">→</span>
-    </button>
-  </nav>
+  <ng-container *ngTemplateOutlet="periodNavigation"></ng-container>
+  </div>
 
   <app-planner
     #plannerComponent
@@ -82,3 +72,43 @@
     </div>
   }
 </main>
+
+<ng-template #periodNavigation>
+  <nav class="planner-date-navigation" aria-label="Navegação do período">
+    <button
+      type="button"
+      class="btn btn-outline-primary planner-navigation-button"
+      (click)="previousDays()"
+      [disabled]="dayWindowStart === 0"
+      aria-label="Exibir período anterior">
+      <span aria-hidden="true">←</span>
+    </button>
+
+    <span class="planner-date-range" aria-live="polite">
+      <ng-container *ngIf="visibleDays.length > 0; else loadingRange">
+        @if (plannerHeaderCollapsed()) {
+          <span [attr.title]="(visibleDays[0] | date:'dd/MM/yyyy') + ' até ' + (visibleDays[visibleDays.length - 1] | date:'dd/MM/yyyy')">
+            <strong>{{ visibleDays[0] | date:'dd/MM' }}</strong>
+            a
+            <strong>{{ visibleDays[visibleDays.length - 1] | date:'dd/MM' }}</strong>
+          </span>
+        } @else {
+          Exibindo
+          <strong>{{ visibleDays[0] | date:'dd/MM/yyyy' }}</strong>
+          até
+          <strong>{{ visibleDays[visibleDays.length - 1] | date:'dd/MM/yyyy' }}</strong>
+        }
+      </ng-container>
+      <ng-template #loadingRange>Carregando período...</ng-template>
+    </span>
+
+    <button
+      type="button"
+      class="btn btn-outline-primary planner-navigation-button"
+      (click)="nextDays()"
+      [disabled]="dayWindowStart + dayWindowSize >= days.length"
+      aria-label="Exibir próximo período">
+      <span aria-hidden="true">→</span>
+    </button>
+  </nav>
+</ng-template>

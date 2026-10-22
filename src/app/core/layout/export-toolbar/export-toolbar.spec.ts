@@ -4,6 +4,9 @@ import { of, Subject, throwError } from 'rxjs';
 import { ExportToolbar } from './export-toolbar';
 import { PlannerExportService } from '../../../services/planner-export';
 import { FeedbackService } from '../../../services/feedback';
+import { CoatendService } from '../../../services/coatend';
+import { SwapDateOption } from '../../../models/coatend/CoatendMilestoneModel';
+import { SwapDocumentService } from '../../../services/swap-document';
 
 describe('ExportToolbar', () => {
   let component: ExportToolbar;
@@ -12,7 +15,11 @@ describe('ExportToolbar', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [ExportToolbar],
-      providers: [{ provide: PlannerExportService, useValue: { export: () => of(new Blob(['xlsx'])) } }],
+      providers: [
+        { provide: PlannerExportService, useValue: { export: () => of(new Blob(['xlsx'])) } },
+        { provide: CoatendService, useValue: { getSwapDates: () => of([]) } },
+        { provide: SwapDocumentService, useValue: { generate: () => of({ fileName: 'swap.docx', documentBase64: 'UEs=', review: 'Revisao' }) } }
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(ExportToolbar);
@@ -140,6 +147,234 @@ describe('ExportToolbar', () => {
     expect(component.exportOptions?.mode).toBe('PERIOD');
     expect(component.exportOptions?.startDate).toBe('2026-10-15');
     expect(component.exportOptions?.endDate).toBe('2026-10-16');
+  });
+
+  it('loads dates only when entering SWAP and displays confirmed and disabled pending options', async () => {
+    const dates: SwapDateOption[] = [
+      { date: '2026-10-23', confirmed: [], pending: [{ id: 'p1', coatendNumber: 2, description: 'Pendente' }] },
+      { date: '2026-10-26', confirmed: [{ id: 'c1', coatendNumber: 1, description: 'Confirmada' }], pending: [] }
+    ];
+    const load = vi.spyOn(TestBed.inject(CoatendService), 'getSwapDates').mockReturnValue(of(dates));
+    component.openGenerationOptions();
+    expect(load).not.toHaveBeenCalled();
+    component.openSwapOptions();
+    await fixture.whenStable();
+    const select = fixture.nativeElement.querySelector('#swap-export-date') as HTMLSelectElement;
+    expect(select.disabled).toBe(false);
+    expect(select.querySelector<HTMLOptionElement>('[value="2026-10-23"]')?.disabled).toBe(true);
+    expect(select.querySelector<HTMLOptionElement>('[value="2026-10-26"]')?.disabled).toBe(false);
+    expect(component.selectedSwap()).toBeNull();
+    expect(load).toHaveBeenCalledOnce();
+  });
+
+  it('shows the selected planned date and only confirmed Coatends as included, with pending exclusions', async () => {
+    vi.spyOn(TestBed.inject(CoatendService), 'getSwapDates').mockReturnValue(of([{
+      date: '2026-10-26',
+      confirmed: [{ id: 'c1', coatendNumber: 8579, description: 'Confirmada para implantacao' }],
+      pending: [{ id: 'p1', coatendNumber: 8753, description: 'Ainda sem confirmacao' }]
+    }]));
+    component.openSwapOptions();
+    await fixture.whenStable();
+    const select = fixture.nativeElement.querySelector('select') as HTMLSelectElement;
+    select.value = '2026-10-26';
+    select.dispatchEvent(new Event('change'));
+    await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('#swap-selection-title').textContent).toContain('26/10/2026');
+    expect(component.selectedSwap()?.confirmed.map(coatend => coatend.id)).toEqual(['c1']);
+    expect(fixture.nativeElement.querySelector('.generation-coatends').textContent).toContain('8579');
+    expect(fixture.nativeElement.querySelector('.generation-warning').textContent).toContain('fora do documento');
+    expect(fixture.nativeElement.querySelector('.generation-pending-coatends').textContent).toContain('8753');
+    expect(fixture.nativeElement.querySelector('.btn-primary').disabled).toBe(true);
+    component.selectSwapDate('2026-11-01');
+    expect(component.selectedSwap()).toBeNull();
+  });
+
+  it('shows pending-only dates but rejects selecting them even through a direct call', async () => {
+    vi.spyOn(TestBed.inject(CoatendService), 'getSwapDates').mockReturnValue(of([{
+      date: '2026-10-26', confirmed: [], pending: [{ id: 'p1', coatendNumber: 1, description: 'Pendente' }]
+    }]));
+    component.openSwapOptions();
+    await fixture.whenStable();
+    const select = fixture.nativeElement.querySelector('select') as HTMLSelectElement;
+    expect(select.disabled).toBe(false);
+    expect(select.querySelector<HTMLOptionElement>('[value="2026-10-26"]')?.disabled).toBe(true);
+    expect(fixture.nativeElement.querySelector('[role="status"]').textContent).toContain('Nenhuma data possui SWAP confirmado');
+    component.selectSwapDate('2026-10-26');
+    expect(component.selectedSwapDate()).toBe('');
+    expect(component.selectedSwap()).toBeNull();
+  });
+
+  it('shows loading and cancels the request when leaving SWAP', async () => {
+    const response = new Subject<SwapDateOption[]>();
+    vi.spyOn(TestBed.inject(CoatendService), 'getSwapDates').mockReturnValue(response);
+    component.openSwapOptions();
+    await fixture.whenStable();
+    expect(component.swapLoading()).toBe(true);
+    expect(fixture.nativeElement.querySelector('[role="status"]').textContent).toContain('Consultando');
+    expect(response.observed).toBe(true);
+    component.openGenerationOptions();
+    expect(response.observed).toBe(false);
+    expect(component.swapLoading()).toBe(false);
+    response.next([{ date: '2026-10-26', confirmed: [], pending: [] }]);
+    expect(component.swapDates()).toEqual([]);
+  });
+
+  it('clears old selection and supports retry after a query error', async () => {
+    const load = vi.spyOn(TestBed.inject(CoatendService), 'getSwapDates')
+      .mockReturnValueOnce(throwError(() => new Error('Unavailable')))
+      .mockReturnValueOnce(of([]));
+    component.openSwapOptions();
+    await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('[role="alert"]').textContent).toContain('Não foi possível consultar');
+    expect(component.swapDates()).toEqual([]);
+    expect(component.selectedSwap()).toBeNull();
+    const retry = [...fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>]
+      .find(button => button.textContent?.includes('Tentar novamente'))!;
+    retry.click();
+    await fixture.whenStable();
+    expect(component.swapError()).toBe('');
+    expect(fixture.nativeElement.querySelector('[role="status"]').textContent).toContain('Nenhuma data');
+    expect(load).toHaveBeenCalledTimes(2);
+  });
+
+  it('fetches fresh dates and resets selection every time SWAP is reopened', () => {
+    const load = vi.spyOn(TestBed.inject(CoatendService), 'getSwapDates').mockReturnValue(of([{
+      date: '2026-10-26', confirmed: [{ id: 'c1', coatendNumber: 1, description: 'Confirmada' }], pending: []
+    }]));
+    component.openSwapOptions();
+    component.selectSwapDate('2026-10-26');
+    expect(component.selectedSwap()).not.toBeNull();
+    component.closeGenerationDialog();
+    component.openSwapOptions();
+    expect(component.selectedSwap()).toBeNull();
+    expect(load).toHaveBeenCalledTimes(2);
+  });
+
+  describe('SWAP document generation', () => {
+    const selection: SwapDateOption = {
+      date: '2026-11-18',
+      confirmed: [{ id: 'c1', coatendNumber: 8579, description: 'Descricao confirmada' }],
+      pending: [{ id: 'p1', coatendNumber: 8753, description: 'Descricao pendente' }]
+    };
+    const document = { fileName: 'swap.docx', documentBase64: 'UEs=', review: '# Revisao\n- [ ] Conferir fontes' };
+
+    beforeEach(() => {
+      vi.spyOn(TestBed.inject(CoatendService), 'getSwapDates').mockReturnValue(of([selection]));
+      component.openSwapOptions();
+      component.selectSwapDate(selection.date);
+      component.swapFiles.set([new File(['xlsx'], 'alteracoesCOATEND8579.xlsx')]);
+    });
+
+    afterEach(() => {
+      delete (window as Window & { showSaveFilePicker?: unknown }).showSaveFilePicker;
+    });
+
+    it('rejects missing, extra, ambiguous and duplicate filenames before generating', async () => {
+      const generate = vi.spyOn(TestBed.inject(SwapDocumentService), 'generate');
+      for (const files of [[], [new File(['xlsx'], 'COATEND8753.xlsx')],
+        [new File(['xlsx'], 'COATEND8579_COATEND8753.xlsx')],
+        [new File(['a'], 'COATEND8579.xlsx'), new File(['b'], 'COATEND8579.xlsx')]]) {
+        component.swapFiles.set(files);
+        expect(component.swapFileError()).not.toBe('');
+        await component.generateSwap();
+      }
+      expect(generate).not.toHaveBeenCalled();
+    });
+
+    it('keeps the native file count synchronized when removing selected files', async () => {
+      const first = new File(['first'], 'COATEND8579.xlsx');
+      const second = new File(['second'], 'COATEND8753.xlsx');
+      await fixture.whenStable();
+      const input = fixture.nativeElement.querySelector('#swap-upload') as HTMLInputElement;
+      Object.defineProperty(input, 'files', { configurable: true, writable: true, value: [first, second] });
+      vi.stubGlobal('DataTransfer', class {
+        readonly files: File[] = [];
+        readonly items = { add: (file: File) => this.files.push(file) };
+      });
+      try {
+        component.onSwapFilesSelected({ target: input } as unknown as Event);
+        expect(input.files?.length).toBe(2);
+        component.removeSwapFile(second);
+        expect(input.files?.length).toBe(1);
+        expect(input.files?.[0]).toBe(first);
+        expect(component.swapFiles()).toEqual([first]);
+        expect(component.swapFileError()).toBe('');
+        component.removeSwapFile(first);
+        expect(input.files?.length).toBe(0);
+        expect(component.swapFiles()).toEqual([]);
+        expect(component.swapFileError()).not.toBe('');
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    });
+
+    it('does not upload or generate when the destination picker is cancelled', async () => {
+      const generate = vi.spyOn(TestBed.inject(SwapDocumentService), 'generate');
+      Object.defineProperty(window, 'showSaveFilePicker', {
+        configurable: true, value: vi.fn().mockRejectedValue(new DOMException('Cancelled', 'AbortError'))
+      });
+      await component.generateSwap();
+      expect(generate).not.toHaveBeenCalled();
+      expect(component.swapGenerating()).toBe(false);
+      expect(component.swapGenerationError()).toBe('');
+      expect(component.swapFiles()).toHaveLength(1);
+    });
+
+    it('generates once, writes the document and exposes the separate review', async () => {
+      const response = new Subject<typeof document>();
+      const generate = vi.spyOn(TestBed.inject(SwapDocumentService), 'generate').mockReturnValue(response);
+      const write = vi.fn().mockResolvedValue(undefined);
+      const close = vi.fn().mockResolvedValue(undefined);
+      const picker = vi.fn().mockResolvedValue({ name: 'swap.docx', createWritable: vi.fn().mockResolvedValue({ write, close }) });
+      Object.defineProperty(window, 'showSaveFilePicker', { configurable: true, value: picker });
+      const operation = component.generateSwap();
+      await Promise.resolve();
+      await component.generateSwap();
+      expect(generate).toHaveBeenCalledOnce();
+      expect(component.swapGenerating()).toBe(true);
+      component.closeGenerationDialog();
+      expect(component.activeDialog()).toBe('swap');
+      response.next(document);
+      response.complete();
+      await operation;
+      await fixture.whenStable();
+      expect(write).toHaveBeenCalledOnce();
+      expect(close).toHaveBeenCalledOnce();
+      expect(component.swapSaved()).toBe(true);
+      expect(component.swapFiles()).toEqual([]);
+      expect(component.swapResult()?.review).toBe(document.review);
+      expect(fixture.nativeElement.querySelector('.generation-result pre').textContent).toBe(document.review);
+      await component.saveGeneratedSwap();
+      expect(generate).toHaveBeenCalledOnce();
+      expect(write).toHaveBeenCalledTimes(2);
+    });
+
+    it('retains the generated document for retry when saving fails', async () => {
+      const generate = vi.spyOn(TestBed.inject(SwapDocumentService), 'generate').mockReturnValue(of(document));
+      const abort = vi.fn().mockResolvedValue(undefined);
+      const destination = { name: 'swap.docx', createWritable: vi.fn().mockResolvedValue({
+        write: vi.fn().mockRejectedValue(new Error('Disk unavailable')), close: vi.fn(), abort
+      }) };
+      Object.defineProperty(window, 'showSaveFilePicker', { configurable: true, value: vi.fn().mockResolvedValue(destination) });
+      await component.generateSwap();
+      expect(abort).toHaveBeenCalledOnce();
+      expect(component.swapSaved()).toBe(false);
+      expect(component.swapResult()).toEqual(document);
+      expect(component.swapGenerationError()).toContain('não foi possível salvá-lo');
+      expect(generate).toHaveBeenCalledOnce();
+    });
+
+    it('shows server validation feedback without saving a document', async () => {
+      const destination = { name: 'swap.docx', createWritable: vi.fn() };
+      Object.defineProperty(window, 'showSaveFilePicker', { configurable: true, value: vi.fn().mockResolvedValue(destination) });
+      vi.spyOn(TestBed.inject(SwapDocumentService), 'generate').mockReturnValue(
+        throwError(() => ({ error: { message: 'Atualize as datas de SWAP.' } }))
+      );
+      await component.generateSwap();
+      expect(destination.createWritable).not.toHaveBeenCalled();
+      expect(component.swapResult()).toBeNull();
+      expect(component.swapGenerationError()).toBe('Atualize as datas de SWAP.');
+    });
   });
 
   it('should download the backend blob once and release the URL', async () => {

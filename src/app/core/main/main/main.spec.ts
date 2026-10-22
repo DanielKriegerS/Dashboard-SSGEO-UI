@@ -61,6 +61,65 @@ describe('Main', () => {
     expect(component).toBeTruthy();
   });
 
+  it('collapses the complete header and restores the same controls without reloading data', async () => {
+    const root = fixture.nativeElement as HTMLElement;
+    const content = root.querySelector<HTMLElement>('#planner-header-content')!;
+    const toggle = root.querySelector<HTMLButtonElement>('.planner-header-toggle')!;
+    const displayOptions = root.querySelector('app-planner-display-options');
+    const blockToolbar = root.querySelector('app-planner-block-toolbar');
+    const planner = root.querySelector('app-planner');
+    const selection = component.displaySelection;
+    const visibleDays = component.visibleDays;
+    const reload = vi.spyOn(component, 'loadPlannerData');
+    expect(content.hidden).toBe(false);
+    expect(content.querySelector('h1')).not.toBeNull();
+    expect(content.querySelector('.planner-date-navigation')).not.toBeNull();
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    toggle.click();
+    await fixture.whenStable();
+    expect(content.hidden).toBe(true);
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(toggle.textContent).toContain('Expandir cabeçalho');
+    expect(root.querySelector('app-planner')).toBe(planner);
+    toggle.click();
+    await fixture.whenStable();
+    expect(content.hidden).toBe(false);
+    expect(root.querySelector('app-planner-display-options')).toBe(displayOptions);
+    expect(root.querySelector('app-planner-block-toolbar')).toBe(blockToolbar);
+    expect(component.displaySelection).toBe(selection);
+    expect(component.visibleDays).toBe(visibleDays);
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it('keeps a compact title and working period navigation while the header is collapsed', async () => {
+    component.days = ['2026-10-13', '2026-10-14', '2026-10-15', '2026-10-16'];
+    component.applyDisplaySelection({ type: 'period', startDate: '2026-10-13', endDate: '2026-10-14' });
+    component.plannerHeaderCollapsed.set(true);
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+    const bar = root.querySelector<HTMLElement>('.planner-header-toggle-row')!;
+    const previous = bar.querySelector<HTMLButtonElement>('[aria-label="Exibir período anterior"]')!;
+    const next = bar.querySelector<HTMLButtonElement>('[aria-label="Exibir próximo período"]')!;
+    expect(bar.querySelector('h1')?.textContent).toContain('Planner - SSGEO');
+    expect(bar.querySelector('.planner-date-range')?.textContent).toContain('13/10');
+    expect(previous.disabled).toBe(true);
+    expect(next.disabled).toBe(false);
+    next.click();
+    await fixture.whenStable();
+    expect(component.visibleDays).toEqual(['2026-10-15', '2026-10-16']);
+    expect(bar.querySelector('.planner-date-range')?.textContent).toContain('16/10');
+    expect(next.disabled).toBe(true);
+    expect(previous.disabled).toBe(false);
+    previous.click();
+    await fixture.whenStable();
+    expect(component.visibleDays).toEqual(['2026-10-13', '2026-10-14']);
+    bar.querySelector<HTMLButtonElement>('.planner-header-toggle')!.click();
+    await fixture.whenStable();
+    expect(root.querySelector('.planner-compact-title')).toBeNull();
+    expect(root.querySelector<HTMLElement>('#planner-header-content')?.hidden).toBe(false);
+    expect(component.visibleDays).toEqual(['2026-10-13', '2026-10-14']);
+  });
+
   it('updates only working periods using the original ID without separate creation requests', () => {
     const update = vi.spyOn(TestBed.inject(TimelineMutationService), 'update');
     const updatePeriods = vi.spyOn(TestBed.inject(TimelineMutationService), 'updatePeriods');
