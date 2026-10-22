@@ -21,10 +21,117 @@ describe('ExportToolbar', () => {
       type: 'period', startDate: '2026-10-15', endDate: '2026-10-16'
     });
     await fixture.whenStable();
+    const dialog = fixture.nativeElement.querySelector('dialog') as HTMLDialogElement;
+    dialog.showModal = vi.fn(() => { dialog.open = true; });
+    dialog.close = vi.fn(() => {
+      dialog.open = false;
+      dialog.dispatchEvent(new Event('close'));
+    });
   });
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  it('opens the chooser before either export modal', () => {
+    component.openGenerationOptions();
+    expect(component.activeDialog()).toBe('choose');
+    expect(component.exportOptions?.opened).toBe(false);
+
+    component.openExportOptions();
+    expect(component.activeDialog()).toBeNull();
+    expect(component.exportOptions?.opened).toBe(true);
+  });
+
+  it('opens and closes SWAP without opening Excel or calling its API', () => {
+    const exportFile = vi.spyOn(TestBed.inject(PlannerExportService), 'export');
+    component.openGenerationOptions();
+    component.openSwapOptions();
+    expect(component.activeDialog()).toBe('swap');
+    expect(component.exportOptions?.opened).toBe(false);
+    expect(exportFile).not.toHaveBeenCalled();
+
+    component.closeGenerationDialog();
+    expect(component.activeDialog()).toBeNull();
+  });
+
+  it('allows opening SWAP without a visible planner period', () => {
+    component.exportContext.update([], { type: 'count', count: 15 });
+    component.openGenerationOptions();
+    component.openExportOptions();
+    expect(component.activeDialog()).toBe('choose');
+    expect(component.exportOptions?.opened).toBe(false);
+    component.openSwapOptions();
+    expect(component.activeDialog()).toBe('swap');
+  });
+
+  it('does not open a new dialog during an Excel export', () => {
+    component.exporting = true;
+    component.openGenerationOptions();
+    component.openSwapOptions();
+    expect(component.activeDialog()).toBeNull();
+  });
+
+  it('routes actual button clicks to separate Excel and SWAP dialogs', async () => {
+    const exportFile = vi.spyOn(TestBed.inject(PlannerExportService), 'export');
+    const root = fixture.nativeElement as HTMLElement;
+    root.querySelector<HTMLButtonElement>('.planner-export-button')!.click();
+    await fixture.whenStable();
+    const dialog = root.querySelector('dialog')!;
+    expect(dialog.open).toBe(true);
+    expect(dialog.querySelector('h2')?.textContent).toContain('Exportar / Gerar');
+    expect(dialog.querySelectorAll('.generation-option')).toHaveLength(2);
+    dialog.querySelectorAll<HTMLButtonElement>('.generation-option')[1].click();
+    await fixture.whenStable();
+    expect(dialog.querySelector('h2')?.textContent).toContain('Gerar documento de SWAP');
+    expect(dialog.querySelector('select')?.disabled).toBe(true);
+    expect(dialog.querySelector<HTMLButtonElement>('.btn-primary')?.disabled).toBe(true);
+    expect(component.exportOptions?.opened).toBe(false);
+    dialog.querySelector<HTMLButtonElement>('.generation-back-button')!.click();
+    await fixture.whenStable();
+    expect(dialog.querySelector('h2')?.textContent).toContain('Exportar / Gerar');
+    dialog.querySelector<HTMLButtonElement>('.generation-option')!.click();
+    await fixture.whenStable();
+    expect(dialog.open).toBe(false);
+    expect(component.exportOptions?.opened).toBe(true);
+    expect(root.querySelector('[aria-labelledby="planner-export-title"]')).not.toBeNull();
+    expect(exportFile).not.toHaveBeenCalled();
+  });
+
+  it('closes on Escape without opening Excel or generating a file', async () => {
+    component.openGenerationOptions();
+    await fixture.whenStable();
+    const dialog = fixture.nativeElement.querySelector('dialog') as HTMLDialogElement;
+    dialog.dispatchEvent(new Event('cancel', { cancelable: true }));
+    await fixture.whenStable();
+    expect(dialog.open).toBe(false);
+    expect(component.activeDialog()).toBeNull();
+    expect(component.exportOptions?.opened).toBe(false);
+  });
+
+  it('keeps the chooser open on internal clicks and closes on the backdrop', async () => {
+    component.openGenerationOptions();
+    await fixture.whenStable();
+    const dialog = fixture.nativeElement.querySelector('dialog') as HTMLDialogElement;
+    vi.spyOn(dialog, 'getBoundingClientRect').mockReturnValue({
+      left: 100, right: 600, top: 100, bottom: 400
+    } as DOMRect);
+    dialog.dispatchEvent(new MouseEvent('click', { clientX: 120, clientY: 120, bubbles: true }));
+    expect(dialog.open).toBe(true);
+    dialog.dispatchEvent(new MouseEvent('click', { clientX: 10, clientY: 10, bubbles: true }));
+    expect(dialog.open).toBe(false);
+  });
+
+  it('disables only Excel when no planner period is available', async () => {
+    component.exportContext.clear();
+    component.openGenerationOptions();
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.querySelector<HTMLButtonElement>('.planner-export-button')?.disabled).toBe(false);
+    const options = root.querySelectorAll<HTMLButtonElement>('.generation-option');
+    expect(options[0].disabled).toBe(true);
+    expect(options[1].disabled).toBe(false);
+    expect(root.querySelector('[role="status"]')?.textContent).toContain('Nenhum período');
   });
 
   it('should open export options using the current navigated context', () => {

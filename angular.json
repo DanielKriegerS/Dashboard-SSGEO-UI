@@ -27,6 +27,11 @@
               {
                 "glob": "**/*",
                 "input": "public"
+              },
+              {
+                "glob": "{arrow-left,arrow-up-from-line,chevron-right,file-spreadsheet,file-text,x}.svg",
+                "input": "node_modules/lucide-static/icons",
+                "output": "icons"
               }
             ],
             "styles": [

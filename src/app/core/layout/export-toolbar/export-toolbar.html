@@ -6,20 +6,70 @@
   <button
     type="button"
     class="planner-export-button"
-    (click)="openExportOptions()"
-    [disabled]="exporting || !exportContext.canExport()"
-    [attr.title]="collapsed ? (exporting ? 'Exportando...' : 'Exportar planner') : null"
-    [attr.aria-label]="exporting ? 'Exportando planner' : 'Exportar planner'">
+    (click)="openGenerationOptions()"
+    [disabled]="exporting"
+    aria-haspopup="dialog"
+    [attr.title]="exporting ? 'Exportando planner' : 'Exportar / Gerar'"
+    [attr.aria-label]="exporting ? 'Exportando planner' : 'Exportar / Gerar'">
 
-    <span class="planner-export-icon" aria-hidden="true">
-      E
-    </span>
+    <span class="generation-icon icon-export planner-export-icon" aria-hidden="true"></span>
 
     <span class="planner-export-label">
-      {{ exporting ? 'Exportando...' : 'Exportar' }}
+      {{ exporting ? 'Exportando...' : 'Exportar / Gerar' }}
     </span>
   </button>
 </div>
+
+<dialog
+  #generationDialog
+  class="generation-modal"
+  aria-labelledby="generation-modal-title"
+  (cancel)="closeGenerationDialog()"
+  (close)="activeDialog.set(null)"
+  (click)="closeOnBackdrop($event)">
+  <header class="generation-modal-header">
+    <h2 id="generation-modal-title" tabindex="-1" data-initial-focus>
+      {{ activeDialog() === 'swap' ? 'Gerar documento de SWAP' : 'Exportar / Gerar' }}
+    </h2>
+    <button type="button" class="generation-icon-button" aria-label="Fechar" title="Fechar" (click)="closeGenerationDialog()">
+      <span class="generation-icon icon-close" aria-hidden="true"></span>
+    </button>
+  </header>
+
+  @if (activeDialog() === 'choose') {
+    <div class="generation-options">
+      <button type="button" class="generation-option" [disabled]="!exportContext.canExport()" (click)="openExportOptions()">
+        <span class="generation-icon icon-excel generation-excel-icon" aria-hidden="true"></span>
+        <span class="generation-option-label">Exportar planner</span>
+        <span class="generation-format">XLSX</span>
+        <span class="generation-icon icon-next" aria-hidden="true"></span>
+      </button>
+      <button type="button" class="generation-option" (click)="openSwapOptions()">
+        <span class="generation-icon icon-document generation-swap-icon" aria-hidden="true"></span>
+        <span class="generation-option-label">Gerar documento de SWAP</span>
+        <span class="generation-format">DOCX</span>
+        <span class="generation-icon icon-next" aria-hidden="true"></span>
+      </button>
+    </div>
+    @if (!exportContext.canExport()) {
+      <p class="generation-status" role="status">Nenhum período do planner disponível para exportar.</p>
+    }
+  } @else if (activeDialog() === 'swap') {
+    <div class="generation-swap-fields">
+      <label for="swap-export-date">Data de SWAP</label>
+      <select id="swap-export-date" class="form-select" disabled>
+        <option>Datas não consultadas</option>
+      </select>
+    </div>
+    <footer class="generation-modal-footer">
+      <button type="button" class="btn btn-outline-secondary generation-back-button" (click)="openGenerationOptions()">
+        <span class="generation-icon icon-back" aria-hidden="true"></span>
+        Voltar
+      </button>
+      <button type="button" class="btn btn-primary" disabled title="Geração indisponível nesta etapa">Gerar Doc. SWAP</button>
+    </footer>
+  }
+</dialog>
 
 <app-planner-export-options
   [exporting]="exporting"
