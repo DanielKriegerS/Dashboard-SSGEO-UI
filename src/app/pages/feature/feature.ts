@@ -13,7 +13,7 @@ import { featureReason, milestoneWarningLabel } from '../../shared/utils/feature
 @Component({
   imports: [RouterLink, ReactiveFormsModule, CommonModule],
   templateUrl: './feature.html',
-  styleUrl: '../features/features.scss',
+  styleUrls: ['./feature.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class Feature {
@@ -41,6 +41,21 @@ export class Feature {
     name: ['', [Validators.required, Validators.pattern(/\S/)]],
     description: ['']
   });
+  readonly totalDevDays = computed(() => {
+    const planning = this.planning();
+    if (!planning) { return 0; }
+    return (planning.development.plannedEnd && planning.development.plannedStart)
+      ? Math.ceil((new Date(planning.development.plannedEnd).getTime() - new Date(planning.development.plannedStart).getTime()) / (1000 * 60 * 60 * 24))
+      : 0;
+  });
+  readonly totalHomologationDays = computed(() => {
+    const planning = this.planning();
+    if (!planning) { return 0; }
+    return (planning.homologation.plannedEnd && planning.homologation.plannedStart)
+      ? Math.ceil((new Date(planning.homologation.plannedEnd).getTime() - new Date(planning.homologation.plannedStart).getTime()) / (1000 * 60 * 60 * 24))
+      : 0;
+  });
+  readonly totalDays = computed(() => this.totalDevDays() + this.totalHomologationDays());
 
   constructor() { if (this.id) { this.load(); } }
 

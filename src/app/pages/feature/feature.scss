@@ -1,0 +1,146 @@
+.feature-heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding-bottom: 1rem;
+}
+
+.feature-section {
+    margin: 0;
+    padding: 1.25rem 0;
+    border-top: 1px solid #d8dde1;
+
+    > h3 {
+        margin-bottom: 1rem;
+    }
+}
+
+.feature-fields,
+.feature-links-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 1.5rem;
+}
+
+.feature-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 1rem;
+
+    .btn {
+        white-space: normal;
+    }
+}
+
+.feature-coatend-list {
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
+
+.feature-coatend-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #e4e7ea;
+
+    &:first-child {
+        padding-top: 0;
+    }
+
+    > button {
+        flex-shrink: 0;
+    }
+}
+
+.feature-coatend-details {
+    display: grid;
+    gap: 0.25rem;
+    min-width: 0;
+}
+
+.feature-link-form {
+    padding-left: 1.5rem;
+    border-left: 1px solid #d8dde1;
+}
+
+.feature-confirmation {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    border-left: 3px solid #b02a37;
+    background-color: #f8f9fa;
+}
+
+.feature-danger-zone h3 {
+    color: #b02a37;
+}
+
+:host {
+    display: block;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.totalDays {
+    background-color: #f8f9fa;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 1rem;
+
+    .dayParagraph {
+        width: 100%;
+        max-width: 28rem;
+        border: 0.2em solid #f5f3f3;
+        border-radius: 0.5em;
+    }
+
+    .dayParagraph p {
+        margin: 0;
+        color: #150202;
+        font-weight: bolder;
+    }
+
+    #devDays {
+        background: linear-gradient(45deg, #09b7df, #f8f9fa);
+    }
+
+    #homDays {
+        background: linear-gradient(45deg, #dda6df, #f8f9fa);
+    }
+
+    #totalDays {
+        background: linear-gradient(45deg, #52d352, #f8f9fa);
+    }
+}
+
+.feature-phase, .planning-header {    
+    p {
+        margin: 0 0.5em;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .feature-fields,
+    .feature-links-layout {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 1rem;
+    }
+
+    .feature-link-form {
+        padding: 1rem 0 0;
+        border-left: 0;
+        border-top: 1px solid #d8dde1;
+    }
+
+    .feature-coatend-row {
+        flex-wrap: wrap;
+    }
+}

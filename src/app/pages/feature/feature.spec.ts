@@ -44,6 +44,21 @@ describe('Feature administration', () => {
     expect(fixture.nativeElement.querySelector('[role="alert"]').textContent).toContain('Desvincule');
   });
 
+  it('renders the effective homologation date independently of the confirmation date', async () => {
+    const fixture = TestBed.createComponent(Feature);
+    await fixture.whenStable();
+    fixture.componentInstance.planning.update(planning => planning ? {
+      ...planning,
+      development: { ...planning.development, confirmed: true, confirmedAt: '2026-10-23T15:00:00Z' },
+      homologation: { ...planning.homologation, plannedStart: '2026-11-10', effectiveStart: '2026-11-10' }
+    } : null);
+    await fixture.whenStable();
+    expect(fixture.nativeElement.textContent).toContain('Inicio efetivo da homologacao: 10/11/2026');
+    expect(fixture.nativeElement.textContent).not.toContain('Inicio efetivo da homologacao: 23/10/2026');
+    expect(fixture.nativeElement.querySelectorAll('.feature-coatend-list > li')).toHaveLength(1);
+    expect(fixture.nativeElement.querySelector('form[aria-labelledby="feature-details-heading"]')).not.toBeNull();
+  });
+
   it('requires explicit deletion and waits for success before navigation', () => {
     const pending = new Subject<undefined>();
     service.delete.mockReturnValueOnce(pending);
