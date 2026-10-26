@@ -92,6 +92,8 @@ export class Main implements OnInit, OnDestroy{
   inject(PlannerExportContextService);
   mode: PlannerMode = 'empty';
 
+  loadRemainingTries = 3;
+
   get hasCompleteStructure(): boolean {
     return this.coatends.some(coatend =>
       Boolean(coatend.id && coatend.sprintId && coatend.quarterId) &&
@@ -192,13 +194,24 @@ export class Main implements OnInit, OnDestroy{
         }
 
         this.loadFeaturePlanning();
+        this.loadRemainingTries = 3;
         this.cdr.detectChanges();
       },
       error: (err) => {
         console.error('Erro ao carregar planner:', err);
-        this.feedback.error('Não foi possível atualizar os dados do planner.');
+        this.feedback.error('Não foi possível atualizar os dados do planner. Tentativas restantes: '+ (this.loadRemainingTries - 1));
+        this.loadError();
       }
     });
+  }
+
+  loadError(): void {
+    this.loadRemainingTries--;
+    if (this.loadRemainingTries > 0) {
+      setTimeout(() => {
+        this.loadPlannerData();
+      }, 10000);
+    }
   }
 
   createPlannerItem(item: PlannerPlaceholderSubmission): void {
