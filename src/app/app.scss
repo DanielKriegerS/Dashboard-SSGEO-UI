@@ -13,6 +13,9 @@
   background-color: #f8fafc;
 }
 
+.connection-fallback { max-width: 680px; margin: 3rem auto; border-top: 3px solid #a33333; padding-top: 1.5rem; }
+@media (max-width: 600px) { .content { padding: 1rem; } }
+
 app-sidebar {
   display: flex;
   flex: 0 0 auto;

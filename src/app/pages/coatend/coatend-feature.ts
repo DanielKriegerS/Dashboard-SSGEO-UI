@@ -27,7 +27,7 @@ export class CoatendFeature {
   readonly busy = signal(false);
   readonly error = signal('');
   readonly notice = signal('');
-  readonly confirmation = signal<'TU' | 'SWAP' | 'UNLINK' | null>(null);
+  readonly confirmation = signal<'TU' | 'SWAP' | 'REOPEN_TU' | 'REOPEN_SWAP' | 'UNLINK' | null>(null);
   readonly reasonLabel = featureReason;
   readonly form = inject(FormBuilder).group({ featureId: ['', Validators.required], weight: [null as number | null, Validators.min(Number.MIN_VALUE)] });
 
@@ -80,13 +80,17 @@ export class CoatendFeature {
     if (action === 'UNLINK' && !current) { return; }
     const operation: Observable<unknown> = action === 'UNLINK'
       ? this.featuresService.unlink(current!.id, this.coatendId())
-      : this.coatendService.confirmMilestone(this.coatendId(), action);
+      : action === 'REOPEN_TU' || action === 'REOPEN_SWAP'
+        ? this.coatendService.reopenMilestone(this.coatendId(), action === 'REOPEN_TU' ? 'TU' : 'SWAP')
+        : this.coatendService.confirmMilestone(this.coatendId(), action);
     this.busy.set(true);
     this.error.set('');
     operation.pipe(finalize(() => this.busy.set(false))).subscribe({
       next: () => {
         this.confirmation.set(null);
-        this.notice.set(action === 'UNLINK' ? 'Coatend desvinculada. Atividades e confirmacoes mantidas.' : `${action} confirmada.`);
+        this.notice.set(action === 'UNLINK' ? 'Coatend desvinculada. Atividades e confirmacoes mantidas.'
+          : action === 'REOPEN_TU' ? 'TU e SWAP reabertas. Atividades mantidas.'
+          : action === 'REOPEN_SWAP' ? 'SWAP reaberta. TU e atividades mantidas.' : `${action} confirmada.`);
         this.load();
       },
       error: error => this.error.set(error.status === 409 ? 'Confirmacao ou vinculo em conflito. Verifique TU e o planejamento atual.' : 'Nao foi possivel concluir. O estado anterior foi mantido.')

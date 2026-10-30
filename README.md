@@ -2,6 +2,41 @@
 
 This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.2.13.
 
+## Evolucao do planejamento - 26/10/2026
+
+- Home (`/`) agora mostra a identificacao textual SSGEO e cards de Planejamento
+  e Administracao. Nao havia arquivo de logo grafica na implementacao anterior.
+- Planejamento (`/planning`) mostra Planner, Quarters, Sprints e Coatends.
+  O Planner foi movido para `/planner`, preservando seu cabecalho e controles.
+- Administracao (`/admin`) mostra Features e Desenvolvedores. As URLs existentes
+  dos cadastros foram preservadas. O nome do menu abre seus cards e expande o
+  submenu; o chevron apenas alterna a expansao. O sidebar pode ser recolhido.
+- Leituras GET com falha de conexao ou HTTP 502/503/504 fazem tres tentativas,
+  com intervalo de dez segundos. Somente apos esgotar as tentativas aparece o
+  fallback global. **Recarregar pagina** inicia um novo ciclo. Gravacoes e erros
+  de negocio nao sao repetidos automaticamente. Sair do Planner cancela suas
+  leituras pendentes. A Home e as paginas de menus nao precisam da API.
+- Alteracoes de atividades que preservam as janelas dos marcos confirmados
+  geram aviso e mantem confirmacoes. Se afetarem a janela, a API devolve 409
+  `MILESTONE_REPLAN_REQUIRED`; o dialogo pede aceite antes de reenviar a mesma
+  operacao com a revisao recebida. Cancelar nao grava nada. Revisao obsoleta
+  exige nova consulta/confirmacao, sem aplicar a gravacao.
+- Replanejar TU reabre TU e SWAP; replanejar SWAP reabre somente SWAP.
+  PRE-SWAP dentro da janela de SWAP preserva a confirmacao; ultrapassar SWAP
+  exige replanejamento e torna a previsao invalida ate corrigir as datas.
+  **Reabrir TU/SWAP** na Coatend permite remover confirmacoes manualmente,
+  com aceite explicito, preservando atividades. A reabertura de TU tambem
+  remove a confirmacao de SWAP. Percentuais e datas continuam vindo da API;
+  estimativa nao significa confirmacao. Bloqueios mantem suas protecoes proprias.
+- O XLSX passa a dimensionar as linhas considerando texto quebrado e celulas
+  mescladas. Datas nao uteis recebem preenchimento e comentario no cabecalho;
+  atividades mantem suas cores, com padrao pontilhado nesses dias. O calendario
+  continua limitado aos feriados nacionais fixos descritos abaixo.
+
+As alteracoes de API exigem uma nova inicializacao do backend para ativacao.
+Nao reinicie uma instancia H2 em memoria sem aceitar a perda de seus dados.
+Testes automatizados usam bancos isolados; nao migram a instancia em execucao.
+
 ## Development server
 
 To start a local development server, run:
@@ -366,12 +401,14 @@ arquivos do usuario. O botao unico e o modal sem Sprint pre-selecionada foram
 verificados no DOM. O navegador integrado esta em estado hidden: verificacao
 fisica de hover e sign-off mobile/touch continuam pendentes.
 
-As confirmacoes atuais registram o instante real do clique no servidor; nao sao
+Na revisao historica de 14/10, as confirmacoes registravam o instante real do clique no servidor; nao eram
 aprovacao de uma data futura de planejamento nem controle da execucao de cada
 tarefa. Podem ocorrer antes da data prevista, exigem previsao valida e SWAP exige
 TU. Confirmar TU protege DEVELOPMENT/TESTING_TU; confirmar SWAP protege SWAP.
 Interpretar os botoes como aprovacao da data prevista exige decisao de negocio
-antes de alterar regras. Nenhuma regra de confirmacao foi alterada nesta rodada.
+antes de alterar regras. Nenhuma regra de confirmacao foi alterada naquela rodada.
+Essa trava total de atividades foi substituida pelo fluxo de replanejamento
+com aceite descrito na revisao de 26/10 no inicio deste documento.
 
 ### Resultados iniciais da massa
 

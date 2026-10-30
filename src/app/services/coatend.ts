@@ -81,4 +81,8 @@ export class CoatendService {
   confirmMilestone(id: string, milestone: 'TU' | 'SWAP'): Observable<CoatendMilestoneModel> {
     return this.http.put<CoatendMilestoneModel>(`${this.baseUrl}/${id}/milestones/${milestone}/confirmation`, {});
   }
+
+  reopenMilestone(id: string, milestone: 'TU' | 'SWAP'): Observable<CoatendMilestoneModel> {
+    return this.http.delete<CoatendMilestoneModel>(`${this.baseUrl}/${id}/milestones/${milestone}/confirmation`);
+  }
 }

@@ -63,6 +63,7 @@ export class Main implements OnInit, OnDestroy{
   private readonly blockService = inject(PlanningBlockService);
   private readonly featureService = inject(FeatureService);
   private featureSubscription?: Subscription;
+  private plannerSubscription?: Subscription;
   featurePlanning: FeaturePlanningModel[] = [];
   milestoneWarnings: MilestoneWarning[] = [];
   featureLoading = false;
@@ -91,8 +92,6 @@ export class Main implements OnInit, OnDestroy{
   private readonly exportContext =
   inject(PlannerExportContextService);
   mode: PlannerMode = 'empty';
-
-  loadRemainingTries = 3;
 
   get hasCompleteStructure(): boolean {
     return this.coatends.some(coatend =>
@@ -131,7 +130,8 @@ export class Main implements OnInit, OnDestroy{
   }
 
   loadPlannerData(): void {
-    forkJoin({
+    this.plannerSubscription?.unsubscribe();
+    this.plannerSubscription = forkJoin({
       quarters: this.quarterService.getAll(),
       sprints: this.sprintService.getAll(),
       coatendSummaries: this.coatendService.getAll(),
@@ -194,24 +194,13 @@ export class Main implements OnInit, OnDestroy{
         }
 
         this.loadFeaturePlanning();
-        this.loadRemainingTries = 3;
         this.cdr.detectChanges();
       },
       error: (err) => {
         console.error('Erro ao carregar planner:', err);
-        this.feedback.error('Não foi possível atualizar os dados do planner. Tentativas restantes: '+ (this.loadRemainingTries - 1));
-        this.loadError();
+        this.feedback.error('Não foi possível atualizar os dados do planner.');
       }
     });
-  }
-
-  loadError(): void {
-    this.loadRemainingTries--;
-    if (this.loadRemainingTries > 0) {
-      setTimeout(() => {
-        this.loadPlannerData();
-      }, 10000);
-    }
   }
 
   createPlannerItem(item: PlannerPlaceholderSubmission): void {
@@ -1288,6 +1277,7 @@ buildDateSegmentHeaders(
   }
 
   ngOnDestroy(): void {
+    this.plannerSubscription?.unsubscribe();
     this.featureSubscription?.unsubscribe();
     this.exportContext.clear();
   }

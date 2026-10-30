@@ -34,49 +34,27 @@
       </a>
     </li>
 
-    <li>
-      <a
-        routerLink="/quarters"
-        routerLinkActive="active"
-        [attr.title]="collapsed ? 'Quarters' : null"
-      >
-        <span class="menu-icon" aria-hidden="true">Q</span>
-        <span class="menu-label">Quarters</span>
-      </a>
-    </li>
-
-    <li>
-      <a
-        routerLink="/sprints"
-        routerLinkActive="active"
-        [attr.title]="collapsed ? 'Sprints' : null"
-      >
-        <span class="menu-icon" aria-hidden="true">S</span>
-        <span class="menu-label">Sprints</span>
-      </a>
-    </li>
-
-    <li>
-      <a
-        routerLink="/coatends"
-        routerLinkActive="active"
-        [attr.title]="collapsed ? 'Coatends' : null"
-      >
-        <span class="menu-icon" aria-hidden="true">C</span>
-        <span class="menu-label">Coatends</span>
-      </a>
-    </li>
-
-    <li>
-      <a
-        routerLink="/admin"
-        routerLinkActive="active"
-        [attr.title]="collapsed ? 'Administração' : null"
-      >
-        <span class="menu-icon" aria-hidden="true">A</span>
-        <span class="menu-label">Administração</span>
-      </a>
-    </li>
+    @for (group of menus; track group.id) {
+      <li class="menu-group" routerLinkActive="group-active">
+        <div class="menu-group-heading">
+          <a [routerLink]="group.path" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }"
+            [attr.title]="collapsed ? group.label : null" [attr.aria-label]="group.label" (click)="openMenu(group.id)">
+            <span class="menu-icon" aria-hidden="true">{{ group.id === 'planning' ? 'P' : 'A' }}</span>
+            <span class="menu-label">{{ group.label }}</span>
+          </a>
+          <button type="button" class="submenu-toggle" [attr.aria-expanded]="!collapsed && expandedMenus().includes(group.id)"
+            [attr.aria-controls]="'submenu-' + group.id" [attr.aria-label]="'Alternar submenus de ' + group.label"
+            [attr.title]="'Alternar submenus de ' + group.label" (click)="toggleMenu(group.id)">
+            <span class="submenu-chevron" [class.is-open]="!collapsed && expandedMenus().includes(group.id)" aria-hidden="true"></span>
+          </button>
+        </div>
+        <ul class="submenu" [id]="'submenu-' + group.id" [hidden]="collapsed || !expandedMenus().includes(group.id)">
+          @for (item of group.children; track item.path) {
+            <li><a [routerLink]="item.path" routerLinkActive="active" ariaCurrentWhenActive="page">{{ item.label }}</a></li>
+          }
+        </ul>
+      </li>
+    }
   </ul>
 
   <app-export-toolbar

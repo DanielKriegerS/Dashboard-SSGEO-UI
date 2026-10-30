@@ -61,6 +61,15 @@ describe('Main', () => {
     expect(component).toBeTruthy();
   });
 
+  it('cancels pending reads and retry timers when leaving the Planner', () => {
+    const quarters = new Subject<QuarterSummary[]>();
+    vi.spyOn(TestBed.inject(Quarter), 'getAll').mockReturnValue(quarters);
+    component.loadPlannerData();
+    expect(quarters.observed).toBe(true);
+    fixture.destroy();
+    expect(quarters.observed).toBe(false);
+  });
+
   it('collapses the complete header and restores the same controls without reloading data', async () => {
     const root = fixture.nativeElement as HTMLElement;
     const content = root.querySelector<HTMLElement>('#planner-header-content')!;

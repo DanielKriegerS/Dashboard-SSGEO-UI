@@ -4,6 +4,14 @@
   <app-sidebar></app-sidebar>
 
   <main class="content">
-    <router-outlet></router-outlet>
+    @if (connection.unavailable()) {
+      <section class="connection-fallback" role="alert" aria-labelledby="connection-title">
+        <h1 id="connection-title">Servidor indisponível</h1>
+        <p>Não foi possível conectar após três tentativas. Verifique sua conexão e tente novamente.</p>
+        <button type="button" class="btn btn-primary" (click)="connection.reload()">Recarregar página</button>
+      </section>
+    } @else {
+      <router-outlet></router-outlet>
+    }
   </main>
 </div>

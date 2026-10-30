@@ -12,7 +12,7 @@ describe('Coatend Feature and milestones', () => {
     tu: { plannedEnd: '2026-10-08', confirmedAt: null, confirmedBy: null, unavailableReason: null },
     swap: { plannedEnd: '2026-10-15', confirmedAt: null, confirmedBy: null, unavailableReason: null } };
   const features = { getAll: vi.fn(() => of([feature])), link: vi.fn(() => of({})), unlink: vi.fn(() => of(void 0)) };
-  const coatends = { getMilestones: vi.fn(() => of(state)), confirmMilestone: vi.fn(() => of(state)) };
+  const coatends = { getMilestones: vi.fn(() => of(state)), confirmMilestone: vi.fn(() => of(state)), reopenMilestone: vi.fn(() => of(state)) };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -36,6 +36,17 @@ describe('Coatend Feature and milestones', () => {
     fixture.componentInstance.confirmation.set('TU');
     fixture.componentInstance.confirm();
     expect(coatends.confirmMilestone).toHaveBeenCalledWith('c1', 'TU');
+  });
+
+  it('requires explicit acceptance before reopening a milestone', async () => {
+    const fixture = await render();
+    expect(coatends.reopenMilestone).not.toHaveBeenCalled();
+    fixture.componentInstance.confirmation.set('REOPEN_TU');
+    await fixture.whenStable();
+    expect(fixture.nativeElement.textContent).toContain('confirmacao de SWAP tambem sera removida');
+    fixture.componentInstance.confirm();
+    expect(coatends.reopenMilestone).toHaveBeenCalledWith('c1', 'TU');
+    expect(fixture.componentInstance.notice()).toContain('TU e SWAP reabertas');
   });
 
   it('does not mark completion after failed confirmation', async () => {

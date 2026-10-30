@@ -1,7 +1,9 @@
 import { Routes } from '@angular/router';
 
 export const routes: Routes = [
-  { path: '', loadComponent: () => import('../app/core/main/main/main').then(m => m.Main) },
+  { path: '', pathMatch: 'full', title: 'Home - SSGEO', loadComponent: () => import('./pages/menu/menu').then(m => m.MenuPage) },
+  { path: 'planning', title: 'Planejamento - SSGEO', data: { menu: 'planning' }, loadComponent: () => import('./pages/menu/menu').then(m => m.MenuPage) },
+  { path: 'planner', loadComponent: () => import('./core/main/main/main').then(m => m.Main) },
   { path: 'quarters', loadComponent: () => import('../app/pages/quarters/quarters').then(m => m.QuartersComponent) },
   { path: 'quarters/:id', loadComponent: () => import('../app/pages/quarter/quarter').then(m => m.QuarterComponent) },
   { path: 'sprints', loadComponent: () => import('../app/pages/sprints/sprints').then(m => m.SprintsComponent) },
@@ -12,7 +14,7 @@ export const routes: Routes = [
   {
     path: 'admin', loadComponent: () => import('./pages/administration/administration').then(m => m.Administration),
     children: [
-      { path: '', redirectTo: 'features', pathMatch: 'full' },
+      { path: '', pathMatch: 'full', title: 'Administração - SSGEO', data: { menu: 'admin' }, loadComponent: () => import('./pages/menu/menu').then(m => m.MenuPage) },
       { path: 'developers', loadComponent: () => import('./pages/developers/developers').then(m => m.Developers) },
       { path: 'features', loadComponent: () => import('./pages/features/features').then(m => m.Features) },
       { path: 'features/new', loadComponent: () => import('./pages/feature/feature').then(m => m.Feature) },

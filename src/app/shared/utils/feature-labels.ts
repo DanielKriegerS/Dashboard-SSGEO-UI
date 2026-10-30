@@ -6,6 +6,7 @@ const reasons: Record<string, string> = {
   NO_WORKING_DAYS: 'Periodo sem dias uteis', NO_COATENDS: 'Sem Coatends vinculadas',
   MISSING_TU: 'TU nao planejada', MISSING_SWAP: 'SWAP nao planejado',
   INVALID_SWAP_WINDOW: 'Periodo de SWAP invalido',
+  INVALID_PRE_SWAP_WINDOW: 'PRE-SWAP posterior ao SWAP; revise as datas',
   TU_NOT_CONFIRMED: 'TU ainda nao confirmada',
   EFFECTIVE_START_AFTER_PLANNED_END: 'Inicio efetivo posterior ao fim previsto; revisar planejamento'
 };
