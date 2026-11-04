@@ -21,6 +21,7 @@ import { buildPlannerBlockEntries, getVisiblePlannerEntries } from '../../../sha
 import { RouterLink } from '@angular/router';
 import { FeaturePhase, FeaturePlanningModel, MilestoneWarning } from '../../../models/feature/FeaturePlanningModel';
 import { featureReason, milestoneWarningLabel } from '../../../shared/utils/feature-labels';
+import { IncidentModel, IncidentPlanningData } from '../../../models/incident/IncidentModel';
 
 interface FeatureSegment {
   start: string;
@@ -36,6 +37,30 @@ interface FeatureSegment {
   styleUrls: ['./planner.scss'],
 })
 export class Planner {
+  @Input() incidentData: IncidentPlanningData[] = [];
+  @Input() incidents: IncidentModel[] = [];
+  @Input() showCoatends = true;
+
+  openIncidentEditor(incident: IncidentModel): void {
+    this.openPlaceholder({ type: 'incident', entityId: incident.id, code: incident.code, description: incident.description });
+  }
+  incidentEntries(data: IncidentPlanningData, day: string): PlannerEntries[] {
+    const entries: PlannerEntries[] = data.timeline.filter(entry => day >= entry.startDate && day <= entry.endDate)
+      .map(entry => ({ ...entry, developerId: entry.developerId ?? undefined, developerName: entry.developerName ?? undefined,
+        developerColor: entry.developerColor ?? undefined }));
+    return this.visibleEntries([...entries, ...buildPlannerBlockEntries(this.blocks, day, { kind: 'incident', id: data.incident.id }, [])]);
+  }
+  openIncidentActivity(date: string, id: string, entry?: PlannerEntries): void {
+    if (entry?.blockType === 'CORPORATE') { this.openActivityEditor(entry, null); return; }
+    this.openPlaceholder({ type: entry?.blockType ? 'block' : 'activity', owner: { kind: 'incident', id },
+      activityId: entry && !entry.blockType ? entry.id : undefined, blockId: entry?.blockType ? entry.id : undefined,
+      blockType: entry?.blockType, activity: entry?.activity, developerId: entry?.developerId,
+      startDate: entry?.startDate ?? date, endDate: entry?.endDate });
+  }
+  onIncidentCellKeydown(event: KeyboardEvent, date: string, id: string): void {
+    if (event.target !== event.currentTarget || !['Enter', ' '].includes(event.key)) return;
+    event.preventDefault(); this.openIncidentActivity(date, id);
+  }
   readonly weekendDayName = getWeekendDayName;
   readonly holidayName = getHolidayName;
   readonly nonWorkingDayLabel = getNonWorkingDayLabel;
@@ -186,6 +211,7 @@ export class Planner {
     if (!activity) return '';
 
     const map: any = {
+      ANALYSIS: 'An',
       DEVELOPMENT: 'De',
       TESTING_TU: 'Tu',
       PASSAGE_TH: 'Ph',

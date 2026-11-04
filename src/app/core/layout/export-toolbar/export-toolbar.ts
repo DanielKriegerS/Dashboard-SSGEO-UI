@@ -13,10 +13,11 @@ import {
   ViewChild
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { finalize, firstValueFrom, from, Subscription, switchMap } from 'rxjs';
+import { finalize, firstValueFrom, forkJoin, from, Subscription, switchMap } from 'rxjs';
 import { SwapDocumentResult, SwapDocumentService } from '../../../services/swap-document';
 import { SwapDateOption } from '../../../models/coatend/CoatendMilestoneModel';
 import { CoatendService } from '../../../services/coatend';
+import { IncidentService } from '../../../services/incident';
 import { PlannerExportRequest } from '../../../models/components/planner/PlannerExportRequest';
 import { FeedbackService } from '../../../services/feedback';
 import { PlannerExportService } from '../../../services/planner-export';
@@ -57,45 +58,55 @@ export class ExportToolbar {
   readonly swapResult = signal<SwapDocumentResult | null>(null);
   readonly swapSaved = signal(false);
   readonly selectedSwap = computed(() => this.swapDates().find(option =>
-    option.date === this.selectedSwapDate() && option.confirmed.length > 0
+    option.date === this.selectedSwapDate() && this.confirmedCount(option) > 0
   ) ?? null);
-  readonly hasConfirmedSwap = computed(() => this.swapDates().some(option => option.confirmed.length > 0));
+  readonly hasConfirmedSwap = computed(() => this.swapDates().some(option => this.confirmedCount(option) > 0));
   readonly swapFileError = computed(() => {
     const selected = this.selectedSwap();
     const files = this.swapFiles();
     if (!selected) return '';
-    if (!files.length) return 'Envie as planilhas das COATENDs confirmadas.';
+    if (!files.length) return 'Envie as planilhas das COATENDs e Incidentes confirmados.';
     if (files.length > 20 || files.reduce((total, file) => total + file.size, 0) > 50 * 1024 * 1024) {
       return 'Limite de 20 arquivos e 50 MB no total.';
     }
-    const expected = new Set(selected.confirmed.map(coatend => coatend.coatendNumber));
-    const uploaded = new Set<number>();
+    const expected = new Set([...selected.confirmed.map(coatend => `COATEND-${coatend.coatendNumber}`),
+      ...(selected.confirmedIncidents ?? []).map(incident => incident.code)]);
+    const uploaded = new Set<string>();
     const names = new Set<string>();
     for (const file of files) {
       const name = file.name.toLowerCase();
-      const matches = [...file.name.matchAll(/COATEND[ _-]?(\d+)/gi)];
+      const matches = [...file.name.matchAll(/COATEND[ _-]?(\d+)|(INC\d+)/gi)];
       if (!name.endsWith('.xlsx') || !file.size || file.size > 10 * 1024 * 1024 || names.has(name)) {
         return `Arquivo inválido ou duplicado: ${file.name}. Use XLSX de até 10 MB.`;
       }
       names.add(name);
-      if (matches.length !== 1) return `Número de COATEND ausente ou ambíguo: ${file.name}.`;
-      const number = Number(matches[0][1]);
-      if (!expected.has(number)) return `COATEND-${number} não pertence à seleção: ${file.name}.`;
-      uploaded.add(number);
+      if (matches.length !== 1) return `Identificador de COATEND ou Incidente ausente ou ambíguo: ${file.name}.`;
+      const identifier = matches[0][2] ? matches[0][2].toUpperCase() : `COATEND-${Number(matches[0][1])}`;
+      if (!expected.has(identifier)) return `${identifier} não pertence à seleção: ${file.name}.`;
+      uploaded.add(identifier);
     }
     const missing = [...expected].filter(number => !uploaded.has(number));
-    return missing.length ? `Faltam planilhas das COATENDs: ${missing.join(', ')}.` : '';
+    return missing.length ? `Faltam planilhas dos itens: ${missing.join(', ')}.` : '';
   });
 
   private readonly document = inject(DOCUMENT);
   private readonly injector = inject(Injector);
   private readonly destroyRef = inject(DestroyRef);
   private readonly coatendService = inject(CoatendService);
+  private readonly incidentService = inject(IncidentService);
   private readonly swapDocumentService = inject(SwapDocumentService);
   private swapRequest?: Subscription;
   private readonly plannerExportService = inject(PlannerExportService);
   private readonly feedback = inject(FeedbackService);
   private readonly cdr = inject(ChangeDetectorRef);
+
+  confirmedCount(option: SwapDateOption): number {
+    return option.confirmed.length + (option.confirmedIncidents?.length ?? 0);
+  }
+
+  pendingCount(option: SwapDateOption): number {
+    return option.pending.length + (option.pendingIncidents?.length ?? 0);
+  }
 
   openGenerationOptions(): void {
     if (this.swapGenerating()) return;
@@ -122,11 +133,18 @@ export class ExportToolbar {
     this.selectedSwapDate.set('');
     this.swapError.set('');
     this.swapLoading.set(true);
-    this.swapRequest = this.coatendService.getSwapDates().pipe(
+    this.swapRequest = forkJoin({ coatends: this.coatendService.getSwapDates(), incidents: this.incidentService.getSwapDates() }).pipe(
       takeUntilDestroyed(this.destroyRef),
       finalize(() => this.swapLoading.set(false))
     ).subscribe({
-      next: dates => this.swapDates.set(dates),
+      next: result => {
+        const dates = new Map(result.coatends.map(option => [option.date, { ...option }]));
+        for (const option of result.incidents) {
+          const current = dates.get(option.date) ?? { date: option.date, confirmed: [], pending: [] };
+          dates.set(option.date, { ...current, confirmedIncidents: option.confirmedIncidents, pendingIncidents: option.pendingIncidents });
+        }
+        this.swapDates.set([...dates.values()].sort((left, right) => left.date.localeCompare(right.date)));
+      },
       error: () => this.swapError.set('Não foi possível consultar as datas de SWAP. Tente novamente.')
     });
   }
@@ -134,7 +152,7 @@ export class ExportToolbar {
   selectSwapDate(date: string): void {
     if (this.swapGenerating()) return;
     this.resetSwapResult();
-    const eligible = this.swapDates().some(option => option.date === date && option.confirmed.length > 0);
+    const eligible = this.swapDates().some(option => option.date === date && this.confirmedCount(option) > 0);
     this.selectedSwapDate.set(eligible ? date : '');
   }
 
@@ -231,7 +249,16 @@ export class ExportToolbar {
   onSwapFilesSelected(event: Event): void {
     if (this.swapGenerating()) return;
     const input = event.target as HTMLInputElement;
-    this.swapFiles.set(Array.from(input.files ?? []));
+    const chosen = Array.from(input.files ?? []);
+    this.swapFiles.update(files => {
+      const combined = [...files];
+      for (const file of chosen) {
+        if (!combined.some(existing => existing.name.toLowerCase() === file.name.toLowerCase()
+          && existing.size === file.size && existing.lastModified === file.lastModified)) combined.push(file);
+      }
+      return combined;
+    });
+    this.syncSwapInput(input);
     this.swapGenerationError.set('');
     this.swapResult.set(null);
     this.swapSaved.set(false);
@@ -241,13 +268,16 @@ export class ExportToolbar {
     if (!this.swapGenerating()) {
       this.swapFiles.update(files => files.filter(candidate => candidate !== file));
       const input = this.generationDialog?.nativeElement.querySelector<HTMLInputElement>('#swap-upload');
-      if (input) {
-        const selection = new DataTransfer();
-        for (const remaining of this.swapFiles()) selection.items.add(remaining);
-        input.files = selection.files;
-      }
+      if (input) this.syncSwapInput(input);
       this.swapGenerationError.set('');
     }
+  }
+
+  private syncSwapInput(input: HTMLInputElement): void {
+    if (typeof DataTransfer === 'undefined') { input.value = ''; return; }
+    const selection = new DataTransfer();
+    for (const file of this.swapFiles()) selection.items.add(file);
+    input.files = selection.files;
   }
 
   async generateSwap(): Promise<void> {
@@ -258,8 +288,8 @@ export class ExportToolbar {
     this.swapResult.set(null);
     this.swapSaved.set(false);
     try {
-      const date = selected.date.split('-').reverse().join('.');
-      const destination = await this.chooseSwapDestination(`Preparação de Implantação - ${date}.docx`);
+      const date = selected.date.replaceAll('-', '.');
+      const destination = await this.chooseSwapDestination(`Preparação SWAP AIX - ${date}.docx`);
       const result = await firstValueFrom(this.swapDocumentService.generate(selected, this.swapFiles()).pipe(
         takeUntilDestroyed(this.destroyRef)
       ));

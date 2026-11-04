@@ -1,0 +1,45 @@
+<main class="container incident-page">
+  <header class="incident-heading"><div><a routerLink="/incidents">Incidentes</a><h1>{{ item()?.code || 'Novo Incidente' }}</h1></div>
+    @if (item(); as current) { <span class="badge" [class.text-bg-success]="current.completed" [class.text-bg-secondary]="!current.completed">{{ current.completed ? 'Concluído' : 'Em andamento' }}</span> }
+  </header>
+  @if (loading()) { <p role="status">Carregando Incidente...</p> }
+  @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }} <button class="btn btn-outline-secondary" (click)="load()" [disabled]="busy()">Tentar novamente</button></div> }
+  @if (!loading() && (!route.snapshot.paramMap.get('id') || item())) {
+    <form class="incident-section" [formGroup]="form" (ngSubmit)="save()" [attr.aria-busy]="busy()">
+      <div class="incident-fields"><label>Código<input class="form-control" formControlName="code" maxlength="255" placeholder="INC1769649"></label>
+        <label>Descrição<input class="form-control" formControlName="description" maxlength="255"></label></div>
+      @if (form.controls.code.touched && form.controls.code.invalid) { <p class="text-danger" role="alert">Informe INC seguido de dígitos, com até 255 caracteres.</p> }
+      <div class="incident-actions"><button class="btn btn-primary" [disabled]="busy() || form.invalid">{{ busy() ? 'Salvando...' : 'Salvar' }}</button>
+        @if (item()) { <button type="button" class="btn btn-outline-danger" [disabled]="busy()" (click)="delete()">Excluir Incidente</button> }
+      </div>
+    </form>
+  }
+  @if (item(); as current) {
+    @if (milestones(); as state) {
+      <section class="incident-section"><h2>Marcos</h2><div class="incident-fields">
+        @for (name of ['TU', 'SWAP']; track name) {
+          @let milestone = name === 'TU' ? state.tu : state.swap;
+          <div><h3>{{ name }}</h3><dl><dt>Previsão</dt><dd>{{ milestone.plannedEnd ? (milestone.plannedEnd | date:'dd/MM/yyyy':'UTC') : 'Não informada' }}</dd>
+            <dt>Confirmação</dt><dd>{{ milestone.confirmedAt ? (milestone.confirmedAt | date:'dd/MM/yyyy HH:mm') : 'Pendente' }}</dd>
+            @if (milestone.confirmedAt) { <dt>Autor</dt><dd>{{ milestone.confirmedBy || 'Não identificado' }}</dd> }
+          </dl>
+          <button type="button" class="btn btn-outline-primary" [disabled]="busy() || !milestone.confirmedAt && (!!milestone.unavailableReason || name === 'SWAP' && !state.tu.confirmedAt)"
+            (click)="confirm(name === 'TU' ? 'TU' : 'SWAP', !!milestone.confirmedAt)">{{ milestone.confirmedAt ? 'Reabrir' : 'Confirmar' }} {{ name }}</button></div>
+        }
+      </div>
+      @for (warning of state.warnings; track warning.milestone) { <p class="text-warning-emphasis">{{ warning.milestone }}: {{ warning.warningCode }} @if (warning.plannedEnd) { — {{ warning.plannedEnd | date:'dd/MM/yyyy':'UTC' }} }</p> }
+      </section>
+    }
+    <section class="incident-section"><header class="incident-heading"><h2>Atividades</h2><button class="btn btn-outline-primary" [disabled]="busy()" (click)="openActivity()">Adicionar atividade</button></header>
+      @if (entries().length) { <div class="table-responsive"><table class="table align-middle"><thead><tr><th>Atividade</th><th>Período</th><th>Executor</th><th>Ações</th></tr></thead><tbody>
+        @for (entry of entries(); track entry.id) { <tr><td>{{ activityLabels[entry.activity] }}</td><td>{{ entry.startDate | date:'dd/MM/yyyy':'UTC' }} a {{ entry.endDate | date:'dd/MM/yyyy':'UTC' }}</td><td>{{ entry.performerName }}</td>
+          <td><div class="incident-actions"><button class="btn btn-outline-secondary btn-sm" [disabled]="busy()" (click)="openActivity(entry)">Editar</button><button class="btn btn-outline-danger btn-sm" [disabled]="busy()" (click)="deleteActivity(entry)">Excluir</button></div></td></tr> }
+      </tbody></table></div> } @else { <p>Nenhuma atividade cadastrada.</p> }
+    </section>
+    <section class="incident-section"><header class="incident-heading"><h2>Dependências</h2><button class="btn btn-outline-primary" [disabled]="busy()" (click)="openBlock()">Adicionar bloqueio</button></header>
+      @for (block of dependencies(); track block.id) { <div class="incident-heading"><span>{{ block.startDate | date:'dd/MM/yyyy':'UTC' }} a {{ block.endDate | date:'dd/MM/yyyy':'UTC' }}</span><button class="btn btn-outline-secondary btn-sm" [disabled]="busy()" (click)="openBlock(block)">Editar bloqueio</button></div> }
+      @if (!dependencies().length) { <p>Nenhum bloqueio de dependência.</p> }
+    </section>
+    <app-planner-placeholder-actions #actions [incidents]="[current]" [blocks]="blocks()" (submitted)="submit($event)" />
+  }
+</main>

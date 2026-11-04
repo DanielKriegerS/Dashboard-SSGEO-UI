@@ -17,10 +17,12 @@
   class="planner-modal-backdrop"
   (click)="closeOnBackdrop($event)">
   <section
+    #dialog
     class="planner-modal"
     role="dialog"
     aria-modal="true"
     [attr.aria-label]="dialogTitle"
+    (keydown)="onDialogKeydown($event)"
     (click)="$event.stopPropagation()">
     <header class="planner-modal-header">
       <div>
@@ -58,6 +60,21 @@
         </dl>
       }
       <div class="planner-modal-fields">
+        @if (currentRequest.type === 'incident') {
+          <label class="planner-form-field"><span>Código do Incidente</span>
+            <input class="form-control" name="incidentCode" [(ngModel)]="code" pattern="INC[0-9]+" maxlength="255" required>
+          </label>
+          <label class="planner-form-field"><span>Descrição</span>
+            <input class="form-control" name="incidentDescription" [(ngModel)]="description" maxlength="255" required>
+          </label>
+        }
+        @if (incidents.length && !isEditing && !currentRequest.owner && (currentRequest.type === 'activity' || currentRequest.type === 'block' && blockType === 'DEPENDENCY')) {
+          <label class="planner-form-field"><span>Tipo de item</span>
+            <select class="form-select" name="ownerKind" [ngModel]="ownerKind" (ngModelChange)="changeOwnerKind($event)">
+              <option value="coatend">COATEND</option><option value="incident">Incidente</option>
+            </select>
+          </label>
+        }
         <label
           *ngIf="!isEditing && (currentRequest.type === 'activity' || currentRequest.type === 'block')"
           class="planner-form-field">
@@ -180,18 +197,26 @@
           </p>
           <label class="planner-form-field">
             <span>Tipo de bloqueio</span>
-            <select class="form-select" name="blockType" [(ngModel)]="blockType" required>
+            <select class="form-select" name="blockType" [(ngModel)]="blockType" [disabled]="ownerKind === 'incident' && !!currentRequest.owner" required>
               <option value="CORPORATE">Corporativo — todo o planejamento</option>
-              <option value="DEPENDENCY">Dependência — COATEND selecionado</option>
+              <option value="DEPENDENCY">Dependência — item selecionado</option>
             </select>
           </label>
-          <label *ngIf="blockType === 'DEPENDENCY'" class="planner-form-field">
+          <label *ngIf="blockType === 'DEPENDENCY' && ownerKind === 'coatend'" class="planner-form-field">
             <span>COATEND</span>
             <select class="form-select" name="blockCoatendId" [(ngModel)]="coatendId" required>
               <option value="" disabled>Selecione um COATEND</option>
               <option *ngFor="let coatend of coatends" [value]="coatend.id">{{ coatend.coatendNumber }} - {{ coatend.description }}</option>
             </select>
           </label>
+          @if (blockType === 'DEPENDENCY' && ownerKind === 'incident') {
+            <label class="planner-form-field"><span>Incidente</span>
+              <select class="form-select" name="blockIncidentId" [(ngModel)]="incidentId" [disabled]="isEditing" required>
+                <option value="" disabled>Selecione um Incidente</option>
+                @for (incident of incidents; track incident.id) { <option [value]="incident.id">{{ incident.code }} — {{ incident.description }}</option> }
+              </select>
+            </label>
+          }
           <div class="planner-form-date-row">
             <label class="planner-form-field">
               <span>Data início</span>
@@ -205,7 +230,7 @@
         </ng-container>
 
         <ng-container *ngIf="currentRequest.type === 'activity'">
-          <label *ngIf="!currentRequest.coatendId" class="planner-form-field">
+          <label *ngIf="!currentRequest.coatendId && !currentRequest.owner && ownerKind === 'coatend'" class="planner-form-field">
             <span>Coatend</span>
             <select
               class="form-select"
@@ -218,6 +243,14 @@
               </option>
             </select>
           </label>
+          @if (ownerKind === 'incident') {
+            <label class="planner-form-field"><span>Incidente</span>
+              <select class="form-select" name="activityIncidentId" [(ngModel)]="incidentId" [disabled]="!!currentRequest.owner || isEditingActivity" required>
+                <option value="" disabled>Selecione um Incidente</option>
+                @for (incident of incidents; track incident.id) { <option [value]="incident.id">{{ incident.code }} — {{ incident.description }}</option> }
+              </select>
+            </label>
+          }
           <label class="planner-form-field">
             <span>Atividade</span>
             <select
@@ -308,7 +341,7 @@
         <ng-container [ngSwitch]="currentRequest.type">
           <span *ngSwitchCase="'sprint'">Cadastre um Quarter antes de criar a Sprint.</span>
           <span *ngSwitchCase="'coatend'">Cadastre uma Sprint antes de criar a Coatend.</span>
-          <span *ngSwitchCase="'activity'">Selecione uma Coatend e um período com dias disponíveis.</span>
+          <span *ngSwitchCase="'activity'">Selecione um item e um período com dias disponíveis.</span>
           <span *ngSwitchCase="'block'">Informe um período válido e, para dependência, selecione uma Coatend.</span>
           <span *ngSwitchCase="'block'">Informe um período válido e, para dependência, selecione um COATEND.</span>
         </ng-container>

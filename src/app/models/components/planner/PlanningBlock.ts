@@ -1,3 +1,5 @@
+import { PlannerItemRef } from './PlannerItemRef';
+
 export type BlockType = 'CORPORATE' | 'DEPENDENCY';
 
 export interface BlockRequest {
@@ -5,6 +7,7 @@ export interface BlockRequest {
   startDate: string;
   endDate: string;
   coatendId: string | null;
+  owner?: PlannerItemRef;
 }
 
 export interface PlanningBlock extends BlockRequest {

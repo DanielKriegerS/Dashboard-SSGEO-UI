@@ -5,7 +5,8 @@ export const navigationMenus = [
       { label: 'Planner', path: '/planner', icon: 'file-spreadsheet' },
       { label: 'Quarters', path: '/quarters', icon: 'file-text' },
       { label: 'Sprints', path: '/sprints', icon: 'file-text' },
-      { label: 'Coatends', path: '/coatends', icon: 'file-text' }
+      { label: 'Coatends', path: '/coatends', icon: 'file-text' },
+      { label: 'Incidentes', path: '/incidents', icon: 'file-text' }
     ]
   },
   {

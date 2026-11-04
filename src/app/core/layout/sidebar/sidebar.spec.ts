@@ -29,8 +29,9 @@ describe('Sidebar', () => {
   it('opens a menu page and reveals its submenu in the required order', async () => {
     const links = Array.from(fixture.nativeElement.querySelectorAll('a')) as HTMLAnchorElement[];
     expect(links.map(link => (link.querySelector('.menu-label') || link).textContent?.trim())).toEqual([
-      'Home', 'Planejamento', 'Planner', 'Quarters', 'Sprints', 'Coatends', 'Administração', 'Features', 'Desenvolvedores'
+      'Home', 'Planejamento', 'Planner', 'Quarters', 'Sprints', 'Coatends', 'Incidentes', 'Administração', 'Features', 'Desenvolvedores'
     ]);
+    expect(links.find(link => link.textContent?.trim() === 'Incidentes')?.getAttribute('href')).toBe('/incidents');
     component.openMenu('planning');
     await fixture.whenStable();
     expect(fixture.nativeElement.querySelector('#submenu-planning').hidden).toBe(false);

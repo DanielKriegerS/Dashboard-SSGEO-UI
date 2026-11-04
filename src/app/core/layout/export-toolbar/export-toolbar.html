@@ -67,11 +67,11 @@
         aria-describedby="swap-export-status">
         <option value="" disabled>Selecione uma data</option>
         @for (option of swapDates(); track option.date) {
-          <option [value]="option.date" [disabled]="option.confirmed.length === 0">
+          <option [value]="option.date" [disabled]="confirmedCount(option) === 0">
             {{ option.date | date:'dd/MM/yyyy':'UTC' }} —
-            @if (option.confirmed.length > 0) {
-              {{ option.confirmed.length }} {{ option.confirmed.length === 1 ? 'confirmada' : 'confirmadas' }}
-              @if (option.pending.length > 0) { · {{ option.pending.length }} {{ option.pending.length === 1 ? 'pendente' : 'pendentes' }} }
+            @if (confirmedCount(option) > 0) {
+              {{ confirmedCount(option) }} {{ confirmedCount(option) === 1 ? 'confirmado' : 'confirmados' }}
+              @if (pendingCount(option) > 0) { · {{ pendingCount(option) }} {{ pendingCount(option) === 1 ? 'pendente' : 'pendentes' }} }
             } @else { Sem confirmação }
           </option>
         }
@@ -87,16 +87,19 @@
         } @else if (!hasConfirmedSwap()) {
           <p class="generation-warning" role="status">Nenhuma data possui SWAP confirmado. As datas pendentes estão indisponíveis para seleção.</p>
         } @else {
-          <p class="generation-status">Somente COATENDs com SWAP confirmado serão incluídas.</p>
+          <p class="generation-status">Somente COATENDs e Incidentes com SWAP confirmado serão incluídos.</p>
         }
       </div>
       @if (selectedSwap(); as selected) {
         <section class="generation-swap-selection" aria-labelledby="swap-selection-title" aria-live="polite">
           <h3 id="swap-selection-title">SWAP selecionado: {{ selected.date | date:'dd/MM/yyyy':'UTC' }}</h3>
-          <p class="generation-confirmed">COATENDs confirmadas: {{ selected.confirmed.length }}</p>
+          <p class="generation-confirmed">Itens confirmados: {{ confirmedCount(selected) }}</p>
           <ul class="generation-coatends">
             @for (coatend of selected.confirmed; track coatend.id) {
               <li><strong>COATEND-{{ coatend.coatendNumber }}</strong><span>{{ coatend.description }}</span></li>
+            }
+            @for (incident of selected.confirmedIncidents || []; track incident.id) {
+              <li><strong>{{ incident.code }}</strong><span>{{ incident.description }}</span></li>
             }
           </ul>
           @if (selected.pending.length > 0) {
@@ -104,6 +107,14 @@
             <ul class="generation-coatends generation-pending-coatends">
               @for (coatend of selected.pending; track coatend.id) {
                 <li><strong>COATEND-{{ coatend.coatendNumber }}</strong><span>{{ coatend.description }}</span></li>
+              }
+            </ul>
+          }
+          @if (selected.pendingIncidents?.length) {
+            <p class="generation-warning">Incidentes sem confirmação: {{ selected.pendingIncidents!.length }}. Ficarão fora do documento:</p>
+            <ul class="generation-coatends generation-pending-incidents">
+              @for (incident of selected.pendingIncidents; track incident.id) {
+                <li><strong>{{ incident.code }}</strong><span>{{ incident.description }}</span></li>
               }
             </ul>
           }

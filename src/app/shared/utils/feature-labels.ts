@@ -1,4 +1,5 @@
 import { MilestoneWarning } from '../../models/feature/FeaturePlanningModel';
+import { IncidentWarning } from '../../models/incident/IncidentModel';
 
 const reasons: Record<string, string> = {
   MISSING_WEIGHT: 'Peso nao informado', INVALID_WEIGHT: 'Peso invalido',
@@ -13,9 +14,11 @@ const reasons: Record<string, string> = {
 
 export function featureReason(code: string): string { return reasons[code] || code; }
 
-export function milestoneWarningLabel(warning: MilestoneWarning): string {
-  const state = warning.code === 'DUE_TODAY' ? 'prevista para hoje, sem confirmacao'
-    : warning.code === 'CONFIRMATION_PENDING' ? 'confirmacao pendente apos o fim previsto'
+export function milestoneWarningLabel(warning: MilestoneWarning | IncidentWarning): string {
+  const code = 'warningCode' in warning ? warning.warningCode : warning.code;
+  const identifier = 'coatendNumber' in warning ? warning.coatendNumber : warning.code;
+  const state = code === 'DUE_TODAY' ? 'prevista para hoje, sem confirmacao'
+    : code === 'CONFIRMATION_PENDING' ? 'confirmacao pendente apos o fim previsto'
       : 'previsao incompleta';
-  return `${warning.coatendNumber} - ${warning.description}: ${warning.milestone} ${state}`;
+  return `${identifier} - ${warning.description}: ${warning.milestone} ${state}`;
 }

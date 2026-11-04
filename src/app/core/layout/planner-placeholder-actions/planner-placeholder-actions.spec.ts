@@ -27,6 +27,56 @@ describe('PlannerPlaceholderActions', () => {
     expect(component).toBeTruthy();
   });
 
+  it('focuses the dialog, traps Tab and restores focus on Escape without submitting', async () => {
+    const trigger = document.createElement('button');
+    document.body.append(trigger);
+    try {
+      trigger.focus();
+      const emit = vi.spyOn(component.submitted, 'emit');
+      component.open({ type: 'incident' });
+      fixture.changeDetectorRef.markForCheck();
+      await fixture.whenStable();
+      const dialog: HTMLElement = fixture.nativeElement.querySelector('[role="dialog"]');
+      const close = dialog.querySelector<HTMLButtonElement>('[aria-label="Fechar"]')!;
+      const cancel = Array.from(dialog.querySelectorAll<HTMLButtonElement>('button')).find(button => button.textContent?.trim() === 'Cancelar')!;
+      expect(document.activeElement).toBe(close);
+      close.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true }));
+      expect(document.activeElement).toBe(cancel);
+      cancel.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }));
+      expect(document.activeElement).toBe(close);
+      close.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+      expect(component.request).toBeNull();
+      expect(document.activeElement).toBe(trigger);
+      expect(emit).not.toHaveBeenCalled();
+    } finally {
+      trigger.remove();
+    }
+  });
+
+  it('creates an Incident without Sprint and preserves its textual code', () => {
+    component.open({ type: 'incident' });
+    component.code = 'INC0001769649';
+    component.description = 'Incident';
+    expect(component.canSubmit).toBe(true);
+    const emit = vi.spyOn(component.submitted, 'emit');
+    component.submit();
+    expect(emit).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ type: 'incident', code: 'INC0001769649', description: 'Incident' }));
+  });
+
+  it('uses the Incident owner and Analysis catalog without emitting coatendId', () => {
+    component.incidents = [{ id: 'i1', code: 'INC1', description: 'Incident', completed: false }];
+    component.open({ type: 'activity', owner: { kind: 'incident', id: 'i1' }, startDate: '2026-10-19', endDate: '2026-10-19' });
+    expect(component.activity).toBe(Activity.ANALYSIS);
+    expect(component.activities).not.toContain(Activity.ADMINISTRATIVE_TASKS);
+    expect(component.developerRequired).toBe(true);
+    component.developerId = 'd1';
+    const emit = vi.spyOn(component.submitted, 'emit');
+    component.submit();
+    expect(emit).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ owner: { kind: 'incident', id: 'i1' }, coatendId: undefined, activity: Activity.ANALYSIS }));
+    component.open({ type: 'activity' });
+    expect(component.activities).not.toContain(Activity.ANALYSIS);
+  });
+
   it('lets period adjustment exclude weekends, count working days and ignore weekend-only blocks', async () => {
     component.coatends = [{ id: 'c1', description: 'Coatend', coatendNumber: 8681 }];
     component.blocks = [{ id: 'b1', type: 'CORPORATE', coatendId: null,

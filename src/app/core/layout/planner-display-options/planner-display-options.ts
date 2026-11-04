@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, OnChanges, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { PlannerDisplaySelection } from '../../../models/components/planner/PlannerDisplaySelection';
+import { PlannerFilters } from '../../../models/components/planner/PlannerFilters';
 
 @Component({
   selector: 'app-planner-display-options',
@@ -13,7 +14,9 @@ export class PlannerDisplayOptions implements OnChanges {
   @Input() selection: PlannerDisplaySelection = { type: 'count', count: 15 };
   @Input() minDate = '';
   @Input() maxDate = '';
+  @Input() filters: PlannerFilters = { type: 'all', status: 'all' };
   @Output() selectionApplied = new EventEmitter<PlannerDisplaySelection>();
+  @Output() filtersChanged = new EventEmitter<PlannerFilters>();
 
   collapsed = true;
   displayType: PlannerDisplaySelection['type'] = 'count';
@@ -21,7 +24,8 @@ export class PlannerDisplayOptions implements OnChanges {
   startDate = '';
   endDate = '';
 
-  ngOnChanges(): void {
+  ngOnChanges(changes: SimpleChanges): void {
+    if (!changes['selection'] && !changes['minDate'] && !changes['maxDate']) return;
     this.displayType = this.selection.type;
     if (this.selection.type === 'count') {
       this.count = this.selection.count;

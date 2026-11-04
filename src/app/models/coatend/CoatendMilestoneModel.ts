@@ -1,5 +1,6 @@
 import { MilestoneWarning } from '../feature/FeaturePlanningModel';
 import { CoatendSummary } from './CoatendSummary';
+import { IncidentModel } from '../incident/IncidentModel';
 
 export interface MilestoneState {
   plannedEnd: string | null;
@@ -21,4 +22,6 @@ export interface SwapDateOption {
   date: string;
   confirmed: CoatendSummary[];
   pending: CoatendSummary[];
+  confirmedIncidents?: IncidentModel[];
+  pendingIncidents?: IncidentModel[];
 }

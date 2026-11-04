@@ -1,5 +1,5 @@
-import { Component, EventEmitter, Input, Output, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, ElementRef, EventEmitter, inject, Input, Output, signal, ViewChild } from '@angular/core';
+import { CommonModule, DOCUMENT } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PlannerMode } from '../../../models/components/planner/PlannerMode';
 import {
@@ -20,6 +20,8 @@ import { BlockType, PlanningBlock } from '../../../models/components/planner/Pla
 import { getActivityBlockingBlocks, getBlockOccupancyConflicts } from '../../../shared/utils/planner-blocks';
 import { TimelineModel } from '../../../models/timeline/TimelineModel';
 import { dateRangeIncludesWeekend, getWeekendDayName, getActivityDateRanges } from '../../../shared/utils/planner-dates';
+import { IncidentModel } from '../../../models/incident/IncidentModel';
+import { PlannerItemKind, PlannerItemRef } from '../../../models/components/planner/PlannerItemRef';
 
 @Component({
   selector: 'app-planner-placeholder-actions',
@@ -28,11 +30,17 @@ import { dateRangeIncludesWeekend, getWeekendDayName, getActivityDateRanges } fr
   styleUrl: './planner-placeholder-actions.scss',
 })
 export class PlannerPlaceholderActions {
+  private readonly document = inject(DOCUMENT);
+  private returnFocus: HTMLElement | null = null;
+  @ViewChild('dialog') set dialog(element: ElementRef<HTMLElement> | undefined) {
+    if (element) this.focusableElements(element.nativeElement)[0]?.focus();
+  }
   @Input() mode: PlannerMode = 'empty';
   @Input() hasCompleteStructure = false;
   @Input() quarters: QuarterSummary[] = [];
   @Input() sprints: SprintSummary[] = [];
   @Input() coatends: CoatendSummary[] = [];
+  @Input() incidents: IncidentModel[] = [];
   @Input() blocks: PlanningBlock[] = [];
   @Input() timeline: TimelineModel[] = [];
   @Output() submitted = new EventEmitter<PlannerPlaceholderSubmission>();
@@ -51,11 +59,18 @@ export class PlannerPlaceholderActions {
   blockType: BlockType = 'CORPORATE';
   developerId = '';
   coatendId = '';
+  incidentId = '';
+  ownerKind: PlannerItemKind = 'coatend';
+  code = '';
   developers: DeveloperModel[] = [];
   developerLoadError = '';
 
-  readonly activities = Object.values(Activity);
+  get activities(): Activity[] {
+    return Object.values(Activity).filter(activity => this.ownerKind === 'incident'
+      ? activity !== Activity.ADMINISTRATIVE_TASKS : activity !== Activity.ANALYSIS);
+  }
   readonly activityLabels: Record<Activity, string> = {
+    [Activity.ANALYSIS]: 'Análise',
     [Activity.DEVELOPMENT]: 'Desenvolvimento',
     [Activity.TESTING_TU]: 'Teste TU',
     [Activity.PASSAGE_TH]: 'Passagem TH',
@@ -66,6 +81,24 @@ export class PlannerPlaceholderActions {
   };
 
   constructor(private developerService: DeveloperService) {}
+
+  get selectedOwner(): PlannerItemRef | null {
+    const id = this.ownerKind === 'incident' ? this.incidentId : this.coatendId;
+    return id ? { kind: this.ownerKind, id } : null;
+  }
+
+  get hasSelectedOwner(): boolean {
+    return this.ownerKind === 'incident'
+      ? this.incidents.some(item => item.id === this.incidentId)
+      : this.coatends.some(item => item.id === this.coatendId);
+  }
+
+  changeOwnerKind(kind: PlannerItemKind): void {
+    if (this.isEditing) return;
+    this.ownerKind = kind;
+    this.onActivityChange(kind === 'incident' ? Activity.ANALYSIS : Activity.DEVELOPMENT);
+    this.developerId = '';
+  }
 
   get isEditingActivity(): boolean {
     return this.request?.type === 'activity' && Boolean(this.request.activityId);
@@ -160,7 +193,7 @@ export class PlannerPlaceholderActions {
     }
     const ranges = getActivityDateRanges(this.startDate, this.endDate, this.isMovingActivity || this.includeWeekends);
     return this.blocks.filter(block => ranges.some(range => getActivityBlockingBlocks(
-      [block], this.activity, this.coatendId, range.startDate, range.endDate
+      [block], this.activity, this.selectedOwner ?? '', range.startDate, range.endDate
     ).length > 0));
   }
 
@@ -170,7 +203,8 @@ export class PlannerPlaceholderActions {
     }
     const conflicts = getBlockOccupancyConflicts(this.blocks, this.timeline, {
       type: this.blockType, startDate: this.startDate, endDate: this.endDate,
-      coatendId: this.blockType === 'DEPENDENCY' ? this.coatendId : null
+      coatendId: this.blockType === 'DEPENDENCY' && this.ownerKind === 'coatend' ? this.coatendId : null,
+      owner: this.blockType === 'DEPENDENCY' ? this.selectedOwner ?? undefined : undefined
     }, this.request.blockId);
     return Boolean(conflicts.blocks.length || conflicts.activities.length);
   }
@@ -184,6 +218,7 @@ export class PlannerPlaceholderActions {
       case 'quarter': return 'Quarter';
       case 'sprint': return 'Sprint';
       case 'coatend': return 'Coatend';
+      case 'incident': return 'Incidente';
       case 'activity': return 'Atividade';
       case 'block': return 'Bloqueio';
       default: return 'Item';
@@ -191,11 +226,13 @@ export class PlannerPlaceholderActions {
   }
 
   get canSubmit(): boolean {
-    if (this.request?.entityId) {
+    if (this.request?.entityId && this.request.type !== 'incident') {
       return true;
     }
 
     switch (this.request?.type) {
+      case 'incident':
+        return /^INC[0-9]+$/.test(this.code) && this.code.length <= 255 && Boolean(this.description.trim());
       case 'quarter':
         return true;
       case 'sprint':
@@ -203,14 +240,14 @@ export class PlannerPlaceholderActions {
       case 'coatend':
         return this.sprints.some(sprint => sprint.id === this.sprintId);
       case 'activity':
-        return this.coatends.some(coatend => coatend.id === this.coatendId)
+        return this.hasSelectedOwner
           && this.hasActivityDates
           && !this.blockingActivityBlocks.length;
       case 'block':
         return this.isValidDate(this.startDate) && this.isValidDate(this.endDate)
           && this.startDate <= this.endDate
           && !this.hasBlockOccupancyConflict
-          && (this.blockType === 'CORPORATE' || this.coatends.some(coatend => coatend.id === this.coatendId));
+          && (this.blockType === 'CORPORATE' || this.hasSelectedOwner);
       default:
         return false;
     }
@@ -227,7 +264,11 @@ export class PlannerPlaceholderActions {
   }
 
   open(request: PlannerPlaceholderRequest): void {
+    this.returnFocus = this.document.activeElement instanceof HTMLElement ? this.document.activeElement : null;
     this.request = request;
+    this.ownerKind = request.owner?.kind ?? 'coatend';
+    this.incidentId = request.owner?.kind === 'incident' ? request.owner.id : this.incidents.length === 1 ? this.incidents[0].id : '';
+    this.code = request.code ?? '';
     this.activityEditMode.set('move');
     this.sameDay = false;
     this.description = request.description ?? '';
@@ -242,8 +283,8 @@ export class PlannerPlaceholderActions {
     this.coatendId = request.coatendId ??
       (this.coatends.length === 1 ? this.coatends[0].id : '');
     this.activity = this.activities.find(activity => activity === request.activity) ??
-      Activity.DEVELOPMENT;
-    this.blockType = request.blockType ?? 'CORPORATE';
+      (this.ownerKind === 'incident' ? Activity.ANALYSIS : Activity.DEVELOPMENT);
+    this.blockType = request.blockType ?? (this.ownerKind === 'incident' ? 'DEPENDENCY' : 'CORPORATE');
     this.developerId = this.developerRequired ? request.developerId ?? '' : '';
     this.developerLoadError = '';
 
@@ -254,6 +295,33 @@ export class PlannerPlaceholderActions {
 
   close(): void {
     this.request = null;
+    this.returnFocus?.focus();
+    this.returnFocus = null;
+  }
+
+  onDialogKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      this.close();
+    } else if (event.key === 'Tab') {
+      const elements = this.focusableElements(event.currentTarget as HTMLElement);
+      const first = elements[0];
+      const last = elements[elements.length - 1];
+      if (event.shiftKey && this.document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && this.document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
+    }
+  }
+
+  private focusableElements(dialog: HTMLElement): HTMLElement[] {
+    return Array.from(dialog.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex="0"]'
+    )).filter(element => !element.hidden && !element.closest('[hidden]'));
   }
 
   changeRecordType(type: 'activity' | 'block'): void {
@@ -261,6 +329,7 @@ export class PlannerPlaceholderActions {
       return;
     }
     this.request = { ...this.request, type, coatendId: this.coatendId || undefined };
+    if (type === 'block' && this.ownerKind === 'incident') this.blockType = 'DEPENDENCY';
     if (type === 'activity') {
       this.loadDevelopers();
     }
@@ -300,6 +369,10 @@ export class PlannerPlaceholderActions {
     };
 
     switch (this.request.type) {
+      case 'incident':
+        submission.code = this.code;
+        submission.description = this.description.trim();
+        break;
       case 'quarter':
       case 'sprint':
         submission.description = this.description.trim();
@@ -324,13 +397,19 @@ export class PlannerPlaceholderActions {
         submission.developerId = requiresActivityDeveloper(submission.activity)
           ? (this.isMovingActivity ? this.request.developerId : this.developerId) || undefined
           : undefined;
-        submission.coatendId = this.coatendId;
+        if (this.ownerKind === 'incident') {
+          submission.owner = this.selectedOwner ?? undefined;
+          submission.coatendId = undefined;
+        } else {
+          submission.coatendId = this.coatendId;
+        }
         break;
       case 'block':
         submission.blockType = this.blockType;
         submission.startDate = this.startDate;
         submission.endDate = this.endDate;
-        submission.coatendId = this.blockType === 'DEPENDENCY' ? this.coatendId : undefined;
+        submission.coatendId = this.blockType === 'DEPENDENCY' && this.ownerKind === 'coatend' ? this.coatendId : undefined;
+        submission.owner = this.blockType === 'DEPENDENCY' ? this.selectedOwner ?? undefined : undefined;
         break;
     }
 

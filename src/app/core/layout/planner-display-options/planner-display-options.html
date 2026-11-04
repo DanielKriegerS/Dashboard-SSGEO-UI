@@ -1,4 +1,4 @@
-<section class="display-panel" aria-label="Opções de exibição dos dias">
+<section class="display-panel" aria-label="Filtros do planner">
   <button
     type="button"
     class="display-panel-toggle"
@@ -6,7 +6,7 @@
     aria-controls="planner-display-fields"
     (click)="collapsed = !collapsed">
     <span class="display-panel-heading">
-      <strong>Exibição dos dias</strong>
+      <strong>Filtros do planner</strong>
       <span class="display-panel-summary">
         <ng-container *ngIf="selection.type === 'count'">
           {{ selection.count }} dias por página
@@ -21,6 +21,18 @@
   </button>
 
   <div id="planner-display-fields" class="display-panel-body" [hidden]="collapsed">
+    <fieldset class="display-mode-options">
+      <legend>Tipo</legend>
+      <label><input type="radio" name="plannerType" [checked]="filters.type === 'all'" (change)="filtersChanged.emit({ type: 'all', status: filters.status })"> Todos</label>
+      <label><input type="radio" name="plannerType" [checked]="filters.type === 'coatend'" (change)="filtersChanged.emit({ type: 'coatend', status: filters.status })"> COATENDs</label>
+      <label><input type="radio" name="plannerType" [checked]="filters.type === 'incident'" (change)="filtersChanged.emit({ type: 'incident', status: filters.status })"> Incidentes</label>
+    </fieldset>
+    <fieldset class="display-mode-options">
+      <legend>Situação</legend>
+      <label><input type="radio" name="plannerStatus" [checked]="filters.status === 'all'" (change)="filtersChanged.emit({ type: filters.type, status: 'all' })"> Todos</label>
+      <label><input type="radio" name="plannerStatus" [checked]="filters.status === 'open'" (change)="filtersChanged.emit({ type: filters.type, status: 'open' })"> Em andamento</label>
+      <label><input type="radio" name="plannerStatus" [checked]="filters.status === 'completed'" (change)="filtersChanged.emit({ type: filters.type, status: 'completed' })"> Concluídos</label>
+    </fieldset>
     <form #displayForm="ngForm" (ngSubmit)="apply()">
       <fieldset class="display-mode-options">
         <legend class="visually-hidden">Escolha como exibir os dias</legend>

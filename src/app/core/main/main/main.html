@@ -28,13 +28,16 @@
       [selection]="displaySelection"
       [minDate]="days[0] || ''"
       [maxDate]="days[days.length - 1] || ''"
+      [filters]="filters"
+      (filtersChanged)="setTypeFilter($event.type); setStatusFilter($event.status)"
       (selectionApplied)="applyDisplaySelection($event)">
     </app-planner-display-options>
 
     <div class="planner-block-toolbar-container">
       <app-planner-block-toolbar
-            [blocks]="blocks"
+            [blocks]="allBlocks"
             [coatends]="coatends"
+            [incidents]="incidentModels"
             (blockCreationRequested)="openBlockCreation()"
             (blockEditionRequested)="openBlockEditor($event)"
             class="planner-block-toolbar">
@@ -46,9 +49,15 @@
   <ng-container *ngTemplateOutlet="periodNavigation"></ng-container>
   </div>
 
+  @if (filters.status !== 'all' && unknownStatusCount && filters.type !== 'incident') { <p role="status">{{ unknownStatusCount }} COATEND(s) com situação indisponível.</p> }
+  @if (incidentLoading) { <p role="status">Carregando Incidentes...</p> }
+  @if (incidentError) { <div class="alert alert-warning" role="alert">{{ incidentError }} <button type="button" class="btn btn-outline-secondary" (click)="loadIncidents()">Tentar novamente</button></div> }
   <app-planner
     #plannerComponent
-    [hierarchy]="plannerHierarchy"
+    [hierarchy]="filteredHierarchy"
+    [incidentData]="filteredIncidents"
+    [incidents]="incidentModels"
+    [showCoatends]="filters.type !== 'incident'"
     [days]="visibleDays"
     [quarterHeaders]="quarterHeaders"
     [sprintHeaders]="sprintHeaders"
@@ -57,9 +66,9 @@
     [quarters]="quarters"
     [sprints]="sprints"
     [coatends]="coatendSummaries"
-    [blocks]="blocks"
+    [blocks]="allBlocks"
     [timeline]="timeline"
-    [featurePlanning]="featurePlanning"
+    [featurePlanning]="filters.type === 'incident' ? [] : featurePlanning"
     [milestoneWarnings]="milestoneWarnings"
     (placeholderSubmitted)="createPlannerItem($event)"
     (blockCreationRequested)="openBlockCreation()"

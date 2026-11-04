@@ -61,9 +61,6 @@ describe('PlannerDisplayOptions', () => {
   it('should collapse upward without discarding the form values', () => {
     const toggle: HTMLButtonElement = fixture.nativeElement.querySelector('.display-panel-toggle');
     component.count = 10;
-    toggle.click();
-    fixture.detectChanges();
-
     const body: HTMLElement = fixture.nativeElement.querySelector('.display-panel-body');
     expect(body.hidden).toBe(true);
     expect(toggle.getAttribute('aria-expanded')).toBe('false');
@@ -71,5 +68,34 @@ describe('PlannerDisplayOptions', () => {
     fixture.detectChanges();
     expect(body.hidden).toBe(false);
     expect(component.count).toBe(10);
+    toggle.click();
+    fixture.detectChanges();
+    expect(body.hidden).toBe(true);
+    expect(component.count).toBe(10);
+  });
+
+  it('emits type and completion filters from the same panel without applying a new period', async () => {
+    const filters = vi.spyOn(component.filtersChanged, 'emit');
+    const dates = vi.spyOn(component.selectionApplied, 'emit');
+    fixture.nativeElement.querySelector('.display-panel-toggle').click();
+    await fixture.whenStable();
+    fixture.nativeElement.querySelectorAll('input[name="plannerType"]')[2].click();
+    expect(filters).toHaveBeenLastCalledWith({ type: 'incident', status: 'all' });
+    fixture.componentRef.setInput('filters', { type: 'incident', status: 'all' });
+    await fixture.whenStable();
+    fixture.nativeElement.querySelectorAll('input[name="plannerStatus"]')[2].click();
+    expect(filters).toHaveBeenLastCalledWith({ type: 'incident', status: 'completed' });
+    expect(dates).not.toHaveBeenCalled();
+  });
+
+  it('preserves draft dates when only type or completion changes', async () => {
+    component.displayType = 'period';
+    component.startDate = '2026-10-08';
+    component.endDate = '2026-10-14';
+    fixture.componentRef.setInput('filters', { type: 'incident', status: 'open' });
+    await fixture.whenStable();
+    expect(component.displayType).toBe('period');
+    expect(component.startDate).toBe('2026-10-08');
+    expect(component.endDate).toBe('2026-10-14');
   });
 });

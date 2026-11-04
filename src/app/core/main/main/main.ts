@@ -5,7 +5,7 @@ import { PlannerCell } from '../../../models/components/planner/PlannerCell';
 import { TimelineModel } from '../../../models/timeline/TimelineModel';
 import { Planner } from "../../layout/planner/planner";
 import { CoatendService } from '../../../services/coatend';
-import { forkJoin, map, Observable, of, switchMap, Subscription } from 'rxjs';
+import { finalize, forkJoin, map, Observable, of, switchMap, Subscription } from 'rxjs';
 import { TimelineService } from '../../../services/timeline-service';
 import { Quarter as QuarterService } from '../../../services/quarter';
 import { PlannerQuarterGroup } from '../../../models/components/planner/PlannerQuarterGroup';
@@ -39,6 +39,11 @@ import { PlannerBlockToolbar } from '../../layout/planner-block-toolbar/planner-
 import { PlannerExportContextService } from '../../../shared/services/planner-export-context';
 import { FeatureService } from '../../../services/feature';
 import { FeaturePlanningModel, MilestoneWarning } from '../../../models/feature/FeaturePlanningModel';
+import { IncidentService } from '../../../services/incident';
+import { IncidentActivityRequest, IncidentPlanningData } from '../../../models/incident/IncidentModel';
+import { PlannerFilters } from '../../../models/components/planner/PlannerFilters';
+import { matchesPlannerFilters } from '../../../shared/utils/planner-items';
+import { Activity } from '../../../models/components/Activities';
 
 @Component({
   selector: 'app-main',
@@ -52,6 +57,104 @@ import { FeaturePlanningModel, MilestoneWarning } from '../../../models/feature/
   styleUrl: './main.scss',
 })
 export class Main implements OnInit, OnDestroy{
+  private readonly incidentService = inject(IncidentService);
+  private incidentSubscription?: Subscription;
+  private incidentWrite?: Subscription;
+  incidentPlanning: IncidentPlanningData[] = [];
+  incidentLoading = false;
+  incidentError = '';
+  readonly incidentBusy = signal(false);
+  filters: PlannerFilters = { type: 'all', status: 'all' };
+  coatendCompletion = new Map<string, boolean>();
+
+  get allBlocks(): PlanningBlock[] {
+    return [...this.blocks, ...this.incidentPlanning.flatMap(data => data.blocks.map(block => ({
+      ...block, coatendId: null, owner: { kind: 'incident' as const, id: data.incident.id }
+    })))];
+  }
+
+  get incidentModels() { return this.incidentPlanning.map(data => data.incident); }
+  get filteredIncidents() {
+    return this.incidentPlanning.filter(data => matchesPlannerFilters('incident', data.incident.completed, this.filters));
+  }
+  get filteredHierarchy(): PlannerQuarterGroup[] {
+    if (this.filters.type === 'incident') return [];
+    if (this.filters.type === 'all' && this.incidentPlanning.length && !this.coatendSummaries.length && !this.quarters.length && !this.sprints.length) return [];
+    return this.plannerHierarchy.map(quarter => ({ ...quarter, sprints: quarter.sprints.map(sprint => ({ ...sprint,
+      coatends: sprint.coatends.filter(row => row.isPlaceholder ? this.filters.status === 'all'
+        : matchesPlannerFilters('coatend', this.coatendCompletion.get(row.coatendId ?? '') ?? null, this.filters))
+    })).filter(sprint => sprint.coatends.length) })).filter(quarter => quarter.sprints.length);
+  }
+  get unknownStatusCount() { return this.coatendSummaries.filter(item => !this.coatendCompletion.has(item.id)).length; }
+  setTypeFilter(type: PlannerFilters['type']) {
+    this.filters = { ...this.filters, type };
+    this.exportContext.setItemType(type);
+  }
+  setStatusFilter(status: PlannerFilters['status']) { this.filters = { ...this.filters, status }; }
+
+  loadIncidents(): void {
+    this.incidentSubscription?.unsubscribe();
+    this.incidentLoading = true;
+    this.incidentError = '';
+    this.incidentSubscription = this.incidentService.getPlanningData().subscribe({
+      next: data => {
+        this.incidentPlanning = data;
+        this.incidentLoading = false;
+        this.extendIncidentDates();
+        if (this.days.length) this.updatePlannerWindow();
+        this.cdr.detectChanges();
+      },
+      error: () => { this.incidentError = 'Nao foi possivel carregar os Incidentes.'; this.incidentLoading = false; this.cdr.detectChanges(); }
+    });
+  }
+
+  private extendIncidentDates(): void {
+    const dates = this.incidentPlanning.flatMap(data => data.timeline.flatMap(entry => [entry.startDate, entry.endDate]));
+    if (!dates.length) return;
+    const currentStart = this.visibleDays[0];
+    const boundaries = [...this.days, ...dates].filter(day => this.isValidDate(day)).sort();
+    this.days = this.generateDays(this.parseLocalDate(boundaries[0]), this.parseLocalDate(boundaries[boundaries.length - 1]));
+    if (currentStart && this.days.includes(currentStart)) this.dayWindowStart = this.days.indexOf(currentStart);
+  }
+
+  private saveIncidentItem(item: PlannerPlaceholderSubmission): void {
+    if (this.incidentBusy()) return;
+    let operation: Observable<unknown>;
+    if (item.type === 'incident') {
+      if (!item.code || !/^INC[0-9]+$/.test(item.code) || item.code.length > 255 || !item.description?.trim()) {
+        this.feedback.warning('Informe um codigo INC e uma descricao validos.'); return;
+      }
+      const request = { code: item.code, description: item.description.trim() };
+      operation = item.entityId ? this.incidentService.update(item.entityId, request) : this.incidentService.create(request);
+    } else {
+      const owner = item.owner;
+      if (owner?.kind !== 'incident' || !this.incidentModels.some(incident => incident.id === owner.id)
+        || !this.hasValidDateRange(item.startDate, item.endDate)) return;
+      if (item.type === 'block') {
+        if (item.blockType !== 'DEPENDENCY') return;
+        const request = { startDate: item.startDate!, endDate: item.endDate! };
+        operation = item.blockId ? this.incidentService.updateBlock(owner.id, item.blockId, request) : this.incidentService.createBlock(owner.id, request);
+      } else {
+        if (!item.activity || item.activity === Activity.ADMINISTRATIVE_TASKS
+          || requiresActivityDeveloper(item.activity) && !item.developerId) return;
+        const ranges = getActivityDateRanges(item.startDate!, item.endDate!, item.includeWeekends !== false);
+        if (!ranges.length || ranges.some(range => getActivityBlockingBlocks(this.allBlocks, item.activity!, owner, range.startDate, range.endDate).length)) {
+          this.feedback.warning('O periodo nao contem dias disponiveis para esta atividade.'); return;
+        }
+        const requests: IncidentActivityRequest[] = ranges.map(range => ({ ...range, activity: item.activity as Activity,
+          developerId: requiresActivityDeveloper(item.activity!) ? item.developerId : null }));
+        operation = item.activityId ? item.includeWeekends !== undefined
+          ? this.incidentService.updatePeriods(owner.id, item.activityId, requests)
+          : this.incidentService.updateActivity(owner.id, item.activityId, requests[0])
+          : this.incidentService.createBatch(owner.id, requests);
+      }
+    }
+    this.incidentBusy.set(true);
+    this.incidentWrite = operation.pipe(finalize(() => this.incidentBusy.set(false))).subscribe({
+      next: () => this.onPlannerItemSaved('Incidente atualizado com sucesso!'),
+      error: error => this.onPlannerItemSaveFailed('Incidente', error, 'atualizar')
+    });
+  }
   readonly plannerHeaderCollapsed = signal(false);
 
   @ViewChild('placeholderActions')
@@ -130,6 +233,7 @@ export class Main implements OnInit, OnDestroy{
   }
 
   loadPlannerData(): void {
+    this.loadIncidents();
     this.plannerSubscription?.unsubscribe();
     this.plannerSubscription = forkJoin({
       quarters: this.quarterService.getAll(),
@@ -204,6 +308,10 @@ export class Main implements OnInit, OnDestroy{
   }
 
   createPlannerItem(item: PlannerPlaceholderSubmission): void {
+    if (item.type === 'incident' || item.owner?.kind === 'incident') {
+      this.saveIncidentItem(item);
+      return;
+    }
     if (item.entityId) {
       this.updateStructureFromPlanner(item);
       return;
@@ -234,6 +342,7 @@ export class Main implements OnInit, OnDestroy{
   }
 
   loadFeaturePlanning(): void {
+    this.coatendCompletion.clear();
     this.featureSubscription?.unsubscribe();
     this.featureLoading = true;
     this.featureError = '';
@@ -247,6 +356,7 @@ export class Main implements OnInit, OnDestroy{
       }))
     ).subscribe({
       next: result => {
+        this.coatendCompletion = new Map(result.milestones.filter(state => state.swap).map(state => [state.coatendId, Boolean(state.swap.confirmedAt)]));
         this.featurePlanning = result.planning;
         this.milestoneWarnings = result.milestones.flatMap(state => state.warnings);
         this.featureLoading = false;
@@ -589,6 +699,7 @@ export class Main implements OnInit, OnDestroy{
 
   loadStructuredPlanner(): void {
     this.days = this.generateDaysFromQuarters(this.coatends);
+    this.extendIncidentDates();
     this.dayWindowStart = 0;
     this.restorePeriodWindow();
 
@@ -631,6 +742,7 @@ export class Main implements OnInit, OnDestroy{
     const range = this.resolvePlaceholderDateRange();
 
     this.days = this.generateDays(range.start, range.end);
+    this.extendIncidentDates();
     this.dayWindowStart = 0;
     this.restorePeriodWindow();
 
@@ -831,7 +943,7 @@ export class Main implements OnInit, OnDestroy{
 
     this.dayWindowSize = size;
     this.displaySelection = { type: 'count', count: size };
-    if (!this.quarters.length && !this.sprints.length && this.days.length) {
+    if (!this.quarters.length && !this.sprints.length && !this.incidentPlanning.length && this.days.length) {
       const end = this.parseLocalDate(this.days[0]);
       end.setDate(end.getDate() + Math.max(this.defaultPlaceholderDays, size) - 1);
       this.days = this.generateDays(this.parseLocalDate(this.days[0]), end);
@@ -1264,6 +1376,7 @@ buildDateSegmentHeaders(
       blockId: block.id,
       blockType: block.type,
       coatendId: block.coatendId ?? undefined,
+      owner: block.owner,
       startDate: block.startDate,
       endDate: block.endDate
     });
@@ -1277,6 +1390,8 @@ buildDateSegmentHeaders(
   }
 
   ngOnDestroy(): void {
+    this.incidentSubscription?.unsubscribe();
+    this.incidentWrite?.unsubscribe();
     this.plannerSubscription?.unsubscribe();
     this.featureSubscription?.unsubscribe();
     this.exportContext.clear();

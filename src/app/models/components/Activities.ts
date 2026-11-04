@@ -1,4 +1,5 @@
 export enum Activity {
+  ANALYSIS = 'ANALYSIS',
   DEVELOPMENT = 'DEVELOPMENT',
   TESTING_TU = 'TESTING_TU',
   PASSAGE_TH = 'PASSAGE_TH',

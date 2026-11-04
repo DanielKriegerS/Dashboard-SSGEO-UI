@@ -7,6 +7,9 @@ import { PlannerDisplaySelection } from '../../models/components/planner/Planner
 })
 export class PlannerExportContextService {
   private readonly visibleDaysState = signal<string[]>([]);
+  private readonly itemTypeState = signal<'all' | 'coatend' | 'incident'>('all');
+  readonly itemType = this.itemTypeState.asReadonly();
+  setItemType(type: 'all' | 'coatend' | 'incident') { this.itemTypeState.set(type); }
 
   private readonly displaySelectionState =
     signal<PlannerDisplaySelection>({
@@ -30,6 +33,7 @@ export class PlannerExportContextService {
   }
 
   clear(): void {
+    this.itemTypeState.set('all');
     this.visibleDaysState.set([]);
     this.displaySelectionState.set({
       type: 'count',

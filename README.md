@@ -1,6 +1,83 @@
 # DashboardSSGEOUi
 
+## Fase 3 - Geradores de Incidentes - 04/11/2026
+
+- Upload SWAP acumula escolhas sucessivas, inclusive de pastas diferentes.
+  Reescolher o mesmo arquivo nao o duplica. Remocao atualiza lista e contador nativo;
+  cancelar uma escolha nao apaga arquivos anteriores. Limites e validacoes permanecem.
+- COATENDs e Incidentes confirmados sao enviados explicitamente na selecao multipart.
+  Pendentes nao sao enviados. Arquivos INC preservam o codigo textual completo.
+- Nome oficial sugerido/retornado: `Preparação SWAP AIX - YYYY.MM.DD.docx`.
+- Planilha inclui os dois tipos com as mesmas regras de atividades/cores/bloqueios.
+  O escopo continua sendo a janela escolhida na exportacao, nao um subconjunto
+  silenciosamente derivado dos filtros visuais de tipo/situacao.
+- Gerador nao publica Servico nas atividades DBA e preserva acentos. Somente
+  nomes consecutivos das historias perdem a linha em branco; atividades a mantem.
+- Verificacao: 98 testes frontend focados e build de desenvolvimento aprovados.
+  Browser real: duas escolhas acumularam tres arquivos, remocao deixou dois,
+  sem submeter geracao nem gravar dados. Geração mista real validada via API de
+  teste/H2 isolado com Python/PowerShell reais; detalhes no plano de geradores.
+- Backend em execucao nao foi reiniciado. Ativar o Java novo requer reinicio
+  planejado; H2 em memoria perde dados ao reiniciar. Nao reinicie sem preserva-los
+  ou aceitar explicitamente a perda. Documentos continuam minutas para revisao.
+
 This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.2.13.
+
+## Ajustes frontend de Incidentes - 04/11/2026
+
+- Linha INC usa a mesma coluna, nome editavel, indicador expansivel de avisos e
+  botao de inclusao `+` de COATEND. Tipo e situacao foram integrados ao componente
+  existente de dias/periodo, no painel **Filtros do planner**. Trocar tipo/situacao
+  nao altera o periodo aplicado nem descarta datas ainda em edicao.
+- A selecao de data SWAP consulta os marcos de COATENDs e Incidentes e agrupa os
+  dois tipos pela previsao de SWAP. Somente confirmados ficam incluidos; pendentes
+  aparecem separados. A consulta e refeita ao reabrir/atualizar o dialogo.
+- Exemplo verificado com API real, sem gravacoes: 11/11/2026 mostrou sete itens
+  confirmados, sendo seis COATENDs e INC1769649, na mesma selecao.
+- Geradores permanecem na fase tres: nenhum contrato de geracao, XLSX, Python
+  ou PowerShell foi alterado. Se houver INC confirmado na selecao, a interface
+  informa a pendencia da fase tres e nao envia uma requisicao legada omitindo INC.
+  Datas somente com COATENDs preservam o fluxo existente.
+- Verificacao desta rodada: 135 testes frontend focados, build de desenvolvimento
+  e typecheck Angular aprovados. Layout e filtros inspecionados na aplicacao real;
+  Incidente/COATEND com coluna de 220 px e periodo preservado ao trocar tipo.
+
+## Incidentes - retomada em 04/11/2026
+
+- Planejamento inclui `/incidents`, `/incidents/new` e `/incidents/:id`.
+  Incidentes sao avulsos, sem Quarter/Sprint/Feature/peso. O codigo e textual:
+  `INC` seguido de digitos, com zeros preservados e limite tecnico de 255 caracteres.
+- O planner apresenta Incidentes depois de Features, ou sozinho quando nao ha
+  estrutura, usando o mesmo calendario. Os filtros de tipo e situacao preservam
+  o periodo. Conclusao vem da confirmacao de SWAP no servidor.
+- A pagina permite editar atividades, dependencias e confirmacoes TU/SWAP.
+  O modal compartilhado oferece Analise somente para Incidentes, com desenvolvedor
+  obrigatorio. Mover preserva a duracao; ajustar periodo usa o endpoint `periods`,
+  inclusive quando fins de semana estao incluidos. Escape fecha o modal, Tab
+  permanece nele e o foco retorna ao controle de origem.
+- Excel e documento SWAP continuam exclusivos de COATENDs nesta fase.
+  Exportacao de Incidentes pertence a fase tres e ainda nao foi implementada.
+- Revisao: build de desenvolvimento e typecheck focado aprovados. O lote de 295
+  testes teve 294 aprovados e um timeout de Feature; os sete testes dessa suite
+  passaram na reexecucao isolada, sem alterar timeouts. O comando geral `npm test`
+  ainda encontra imports quebrados em specs legadas fora do escopo.
+- API real/H2 isolado: cadastro pela pagina/planner, Analise, nove filtros, TU/SWAP,
+  cancelamento de replanejamento e recorte por dependencia exercitados.
+  Capturas desktop/mobile e demais cenarios de integracao continuam pendentes de
+  validacao completa. A fase dois nao esta declarada concluida.
+
+No PowerShell, executar todas as suites focadas com includes explicitos:
+
+```powershell
+$specs = (Get-Content tsconfig.planner.spec.json -Raw | ConvertFrom-Json).include
+$includes = @($specs | Where-Object { $_ -like '*.spec.ts' } | ForEach-Object { "--include=$_" })
+npm test -- --watch=false --ts-config=tsconfig.planner.spec.json @includes
+```
+
+Se usar `npm --prefix` no Windows, preservar a letra canonica do drive (`C:`).
+Nesta revisao, `c:` reproduziu falha de localizacao do runner Vitest; `C:` funcionou.
+O plano e o checkpoint de retomada estao no repositorio backend, em
+`.specs/incidents/frontend/`.
 
 ## Evolucao do planejamento - 26/10/2026
 

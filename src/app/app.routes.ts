@@ -9,6 +9,9 @@ export const routes: Routes = [
   { path: 'sprints', loadComponent: () => import('../app/pages/sprints/sprints').then(m => m.SprintsComponent) },
   { path: 'sprints/:id', loadComponent: () => import('../app/pages/sprint/sprint').then(m => m.SprintComponent) },
   { path: 'coatends', loadComponent: () => import('../app/pages/coatends/coatends').then(m => m.CoatendsComponent) },
+  { path: 'incidents', loadComponent: () => import('./pages/incidents/incidents').then(m => m.Incidents) },
+  { path: 'incidents/new', loadComponent: () => import('./pages/incident/incident').then(m => m.Incident) },
+  { path: 'incidents/:id', loadComponent: () => import('./pages/incident/incident').then(m => m.Incident) },
   { path: 'coatends/:id', loadComponent: () => import('../app/pages/coatend/coatend').then(m => m.CoatendComponent) },
   { path: 'developers', redirectTo: 'admin/developers', pathMatch: 'full' },
   {

@@ -19,6 +19,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { PlannerExportContextService } from '../../../shared/services/planner-export-context';
 import { FeatureService } from '../../../services/feature';
 import { provideRouter } from '@angular/router';
+import { IncidentService } from '../../../services/incident';
 
 describe('Main', () => {
   let component: Main;
@@ -29,6 +30,9 @@ describe('Main', () => {
       imports: [Main],
       providers: [
         provideRouter([]),
+        { provide: IncidentService, useValue: {
+          getPlanningData: () => of([]), updateActivity: vi.fn(() => of({})), updatePeriods: vi.fn(() => of([]))
+        } },
         { provide: FeatureService, useValue: { getAll: () => of([]), getPlanning: () => of({}) } },
         { provide: Quarter, useValue: { getAll: () => of([]) } },
         { provide: SprintService, useValue: { getAll: () => of([]) } },
@@ -59,6 +63,63 @@ describe('Main', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  it('loads Incidents without Quarter or Sprint and keeps filters independent of the calendar', () => {
+    vi.spyOn(TestBed.inject(IncidentService), 'getPlanningData').mockReturnValue(of([{
+      incident: { id: 'i1', code: 'INC1769649', description: 'Incident', completed: false },
+      timeline: [{ id: 'a1', incidentId: 'i1', activity: Activity.ANALYSIS, startDate: '2026-10-15', endDate: '2026-10-23',
+        developerId: 'd1', developerName: 'Daniel', developerColor: '#123456', performerName: 'Daniel', performerColor: '#123456' }],
+      blocks: [], milestones: null
+    }]));
+    component.loadPlannerData();
+    expect(component.incidentPlanning).toHaveLength(1);
+    expect(component.days).toContain('2026-10-15');
+    const days = component.days;
+    component.setTypeFilter('incident');
+    component.setStatusFilter('completed');
+    expect(component.filteredIncidents).toEqual([]);
+    expect(component.filteredHierarchy).toEqual([]);
+    expect(component.days).toBe(days);
+    expect(TestBed.inject(PlannerExportContextService).canExport()).toBe(true);
+    component.setStatusFilter('open');
+    expect(component.filteredIncidents).toHaveLength(1);
+  });
+
+  it('cancels pending Incident reads when leaving the Planner', () => {
+    const pending = new Subject<never[]>();
+    vi.spyOn(TestBed.inject(IncidentService), 'getPlanningData').mockReturnValue(pending);
+    component.loadIncidents();
+    expect(pending.observed).toBe(true);
+    fixture.destroy();
+    expect(pending.observed).toBe(false);
+  });
+
+  it.each([true, false])('uses the Incident periods endpoint when resizing with includeWeekends=%s', includeWeekends => {
+    const service = TestBed.inject(IncidentService);
+    vi.spyOn(component, 'loadPlannerData').mockImplementation(() => {});
+    component.incidentPlanning = [{ incident: { id: 'i1', code: 'INC001', description: 'Incident', completed: false },
+      timeline: [], blocks: [], milestones: null }];
+    component.createPlannerItem({ type: 'activity', owner: { kind: 'incident', id: 'i1' }, activityId: 'a1',
+      activity: Activity.SWAP, startDate: '2026-10-23', endDate: '2026-10-26', includeWeekends });
+    expect(service.updateActivity).not.toHaveBeenCalled();
+    expect(service.updatePeriods).toHaveBeenCalledExactlyOnceWith('i1', 'a1', includeWeekends
+      ? [{ activity: Activity.SWAP, startDate: '2026-10-23', endDate: '2026-10-26', developerId: null }]
+      : [{ activity: Activity.SWAP, startDate: '2026-10-23', endDate: '2026-10-23', developerId: null },
+        { activity: Activity.SWAP, startDate: '2026-10-26', endDate: '2026-10-26', developerId: null }]);
+  });
+
+  it('uses the Incident activity endpoint when moving without changing period segmentation', () => {
+    const service = TestBed.inject(IncidentService);
+    vi.spyOn(component, 'loadPlannerData').mockImplementation(() => {});
+    component.incidentPlanning = [{ incident: { id: 'i1', code: 'INC001', description: 'Incident', completed: false },
+      timeline: [], blocks: [], milestones: null }];
+    component.createPlannerItem({ type: 'activity', owner: { kind: 'incident', id: 'i1' }, activityId: 'a1',
+      activity: Activity.ANALYSIS, developerId: 'd1', startDate: '2026-10-23', endDate: '2026-10-26' });
+    expect(service.updatePeriods).not.toHaveBeenCalled();
+    expect(service.updateActivity).toHaveBeenCalledExactlyOnceWith('i1', 'a1', {
+      activity: Activity.ANALYSIS, developerId: 'd1', startDate: '2026-10-23', endDate: '2026-10-26'
+    });
   });
 
   it('cancels pending reads and retry timers when leaving the Planner', () => {

@@ -3,6 +3,7 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 
 import { PlanningBlock } from '../../../models/components/planner/PlanningBlock';
 import { CoatendSummary } from '../../../models/coatend/CoatendSummary';
+import { IncidentModel } from '../../../models/incident/IncidentModel';
 
 @Component({
   selector: 'app-planner-block-toolbar',
@@ -14,6 +15,7 @@ import { CoatendSummary } from '../../../models/coatend/CoatendSummary';
 export class PlannerBlockToolbar {
   @Input() blocks: PlanningBlock[] = [];
   @Input() coatends: CoatendSummary[] = [];
+  @Input() incidents: IncidentModel[] = [];
 
   @Output() blockCreationRequested = new EventEmitter<void>();
   @Output() blockEditionRequested = new EventEmitter<PlanningBlock>();
@@ -27,6 +29,10 @@ export class PlannerBlockToolbar {
   }
 
   blockScopeLabel(block: PlanningBlock): string {
+    if (block.owner?.kind === 'incident') {
+      const incident = this.incidents.find(item => item.id === block.owner?.id);
+      return incident ? `${incident.code} - ${incident.description}` : 'Incidente indisponivel';
+    }
     if (block.type === 'CORPORATE') {
       return 'Todo o planejamento';
     }

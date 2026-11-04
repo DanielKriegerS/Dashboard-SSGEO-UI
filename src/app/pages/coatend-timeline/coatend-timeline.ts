@@ -33,6 +33,7 @@ export class CoatendTimelineComponent {
   };
 
   activityLabels: Record<Activity, string> = {
+    [Activity.ANALYSIS]: 'Análise',
     [Activity.DEVELOPMENT]: 'Desenvolvimento',
     [Activity.TESTING_TU]: 'Teste TU',
     [Activity.PASSAGE_TH]: 'Passagem TH',
@@ -42,7 +43,7 @@ export class CoatendTimelineComponent {
     [Activity.SWAP]: 'Swap'
   };
   
-  activities = Object.values(Activity);
+  activities = Object.values(Activity).filter(activity => activity !== Activity.ANALYSIS);
     // Mapping to determine if an activity requires a developer
     activityRequiresDeveloper: Record<string, boolean> = {
     DEVELOPMENT: true,

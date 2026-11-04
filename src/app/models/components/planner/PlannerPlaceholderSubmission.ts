@@ -1,6 +1,7 @@
 import { BlockType } from './PlanningBlock';
+import { PlannerItemRef } from './PlannerItemRef';
 
-export type PlannerPlaceholderType = 'quarter' | 'sprint' | 'coatend' | 'activity' | 'block';
+export type PlannerPlaceholderType = 'quarter' | 'sprint' | 'coatend' | 'incident' | 'activity' | 'block';
 
 export interface PlannerPlaceholderRequest {
   type: PlannerPlaceholderType;
@@ -13,6 +14,8 @@ export interface PlannerPlaceholderRequest {
   quarterId?: string;
   sprintId?: string;
   coatendId?: string;
+  owner?: PlannerItemRef;
+  code?: string;
   activity?: string;
   developerId?: string;
   startDate?: string;

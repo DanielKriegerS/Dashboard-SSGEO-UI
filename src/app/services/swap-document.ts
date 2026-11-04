@@ -19,6 +19,9 @@ export class SwapDocumentService {
       date: selection.date,
       coatends: selection.confirmed.map(coatend => ({
         id: coatend.id, number: coatend.coatendNumber, description: coatend.description
+      })),
+      incidents: (selection.confirmedIncidents ?? []).map(incident => ({
+        id: incident.id, code: incident.code, description: incident.description
       }))
     })], { type: 'application/json' }));
     for (const file of files) {

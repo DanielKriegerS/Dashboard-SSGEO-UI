@@ -24,6 +24,23 @@ describe('Planner', () => {
     expect(component).toBeTruthy();
   });
 
+  it('uses the Coatend row layout and compact add control for Incidents with expandable milestone details', async () => {
+    fixture.componentRef.setInput('days', ['2026-11-11']);
+    fixture.componentRef.setInput('incidentData', [{ incident: { id: 'i1', code: 'INC0001', description: 'Incidente', completed: false },
+      timeline: [], blocks: [], milestones: { warnings: [{ code: 'INC0001', description: 'Incidente', milestone: 'TU', warningCode: 'DUE_TODAY', plannedEnd: '2026-11-11' }] } }]);
+    await fixture.whenStable();
+    const label = fixture.nativeElement.querySelector('.planner-incident-row .planner-coatend-cell');
+    expect(label.querySelector('.planner-edit-label').textContent.trim()).toBe('INC0001 - Incidente');
+    const details = label.querySelector('.planner-milestone-warning');
+    expect(details.open).toBe(false);
+    expect(details.querySelector('summary').textContent.trim()).toBe('!');
+    expect(details.textContent).toContain('prevista para hoje');
+    expect(details.querySelector('a').getAttribute('href')).toBe('/incidents/i1');
+    const add = fixture.nativeElement.querySelector('button[aria-label="Adicionar Incidente"]');
+    expect(add.classList.contains('planner-add-placeholder')).toBe(true);
+    expect(add.textContent.trim()).toBe('+');
+  });
+
   it('renders a single Sprint add action after the last header and no hyphen in date gaps', async () => {
     fixture.componentRef.setInput('days', ['2026-10-23', '2026-10-24', '2026-10-26']);
     fixture.componentRef.setInput('sprints', [{ id: 's1', description: 'S1' }, { id: 's2', description: 'S2' }]);

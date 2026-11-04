@@ -6,6 +6,7 @@
     [quarters]="quarters"
     [sprints]="sprints"
     [coatends]="coatends"
+    [incidents]="incidents"
     [blocks]="blocks"
     [timeline]="timeline"
     (submitted)="placeholderSubmitted.emit($event)">
@@ -28,7 +29,7 @@
             Planner
           </th>
           <th
-            *ngFor="let q of quarterHeaders"
+              *ngFor="let q of showCoatends && (quarters.length || !incidents.length) ? quarterHeaders : []"
             [attr.colspan]="q.colspan"
             scope="colgroup"
             class="planner-quarter-header">
@@ -56,7 +57,7 @@
         </tr>
         <tr>
           <th
-            *ngFor="let s of sprintHeaders"
+              *ngFor="let s of showCoatends && (sprints.length || !incidents.length) ? sprintHeaders : []"
             [attr.colspan]="s.colspan"
             scope="colgroup"
             class="planner-sprint-header">
@@ -167,7 +168,7 @@
             </ng-container>
           </ng-container>
         </ng-container>
-            <tr *ngIf="mode === 'structured'" class="planner-placeholder-row">
+            <tr *ngIf="mode === 'structured' && showCoatends" class="planner-placeholder-row">
               <td class="text-start planner-fixed-column planner-coatend-cell">
                 <button
                   type="button"
@@ -226,6 +227,45 @@
             }
           </tr>
         }
+        @if (incidentData.length) {
+          <tr class="planner-incident-heading"><th scope="rowgroup" [attr.colspan]="days.length + 1" class="text-start">Incidentes</th></tr>
+        }
+        @for (data of incidentData; track data.incident.id) {
+          <tr class="planner-incident-row">
+            <th scope="row" class="planner-fixed-column text-start planner-coatend-cell">
+              <button type="button" class="planner-edit-label" title="Editar Incidente" (click)="openIncidentEditor(data.incident)">{{ data.incident.code }} - {{ data.incident.description }}</button>
+              @if (data.error) { <span class="text-danger small" role="alert">{{ data.error }}</span> }
+              @if (data.milestones?.warnings?.length) {
+              <details class="planner-milestone-warning">
+                <summary [attr.aria-label]="data.milestones!.warnings.length + ' aviso(s) de marco. Abrir detalhes'" title="Abrir Incidente e marcos"><span aria-hidden="true">!</span></summary>
+                <div class="planner-warning-content">
+                  @for (warning of data.milestones!.warnings; track warning.milestone) {
+                    <p>{{ warningLabel(warning) }} @if (warning.plannedEnd) { ({{ warning.plannedEnd | date:'dd/MM/yyyy' }}) }</p>
+                  }
+                  <a [routerLink]="['/incidents', data.incident.id]">Abrir Incidente e marcos</a>
+                </div>
+              </details>
+              }
+            </th>
+            @for (day of days; track day) {
+              <td class="planner-day-cell planner-add-activity-cell" [class.planner-weekend-cell]="!!nonWorkingDayLabel(day)" tabindex="0"
+                [attr.aria-label]="'Adicionar atividade ou bloqueio em ' + data.incident.code + ' em ' + day"
+                (click)="!data.error && openIncidentActivity(day, data.incident.id)" (keydown)="!data.error && onIncidentCellKeydown($event, day, data.incident.id)">
+                <div class="planner-cell-content">
+                  @for (entry of incidentEntries(data, day); track entry.id) {
+                    <button type="button" class="px-1 rounded planner-entry" [class.planner-block-entry]="!!entry.blockType"
+                      [style.background-color]="safeColor(entry.performerColor)" [style.color]="getTextColor(entry.performerColor)"
+                      [title]="entryTitle(entry)" [attr.aria-label]="entryTitle(entry)"
+                      (click)="$event.stopPropagation(); openIncidentActivity(day, data.incident.id, entry)">{{ entryLabel(entry) }}</button>
+                  }
+                </div>
+              </td>
+            }
+          </tr>
+        }
+        <tr class="planner-placeholder-row"><td class="planner-fixed-column text-start">
+          <button type="button" class="planner-add-placeholder" aria-label="Adicionar Incidente" title="Adicionar Incidente" (click)="openPlaceholder({ type: 'incident' })">+</button>
+        </td><td [attr.colspan]="days.length"></td></tr>
       </tbody>
     </table>
   </div>

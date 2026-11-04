@@ -7,6 +7,7 @@ import { FeedbackService } from '../../../services/feedback';
 import { CoatendService } from '../../../services/coatend';
 import { SwapDateOption } from '../../../models/coatend/CoatendMilestoneModel';
 import { SwapDocumentService } from '../../../services/swap-document';
+import { IncidentService } from '../../../services/incident';
 
 describe('ExportToolbar', () => {
   let component: ExportToolbar;
@@ -18,6 +19,7 @@ describe('ExportToolbar', () => {
       providers: [
         { provide: PlannerExportService, useValue: { export: () => of(new Blob(['xlsx'])) } },
         { provide: CoatendService, useValue: { getSwapDates: () => of([]) } },
+        { provide: IncidentService, useValue: { getSwapDates: () => of([]) } },
         { provide: SwapDocumentService, useValue: { generate: () => of({ fileName: 'swap.docx', documentBase64: 'UEs=', review: 'Revisao' }) } }
       ],
     }).compileComponents();
@@ -204,6 +206,53 @@ describe('ExportToolbar', () => {
     expect(component.selectedSwap()).toBeNull();
   });
 
+  it('combines six Coatends and a confirmed Incident on 11 November and validates both upload types', async () => {
+    const confirmed = Array.from({ length: 6 }, (_, index) => ({ id: `c${index}`, coatendNumber: 8600 + index, description: `Coatend ${index}` }));
+    vi.spyOn(TestBed.inject(CoatendService), 'getSwapDates').mockReturnValue(of([{ date: '2026-11-11', confirmed, pending: [] }]));
+    vi.spyOn(TestBed.inject(IncidentService), 'getSwapDates').mockReturnValue(of([{
+      date: '2026-11-11', confirmed: [], pending: [],
+      confirmedIncidents: [{ id: 'i1', code: 'INC0001769649', description: 'Incidente confirmado', completed: true }],
+      pendingIncidents: [{ id: 'i2', code: 'INC2', description: 'Incidente pendente', completed: false }]
+    }]));
+    component.exportContext.setItemType('incident');
+    component.openSwapOptions();
+    component.selectSwapDate('2026-11-11');
+    await fixture.whenStable();
+    expect(component.swapDates()).toHaveLength(1);
+    const option = fixture.nativeElement.querySelector('option[value="2026-11-11"]') as HTMLOptionElement;
+    expect(option.disabled).toBe(false);
+    expect(option.textContent).toContain('7 confirmados');
+    expect(option.textContent).toContain('1 pendente');
+    const rows = fixture.nativeElement.querySelectorAll('.generation-coatends:not(.generation-pending-incidents) li');
+    expect(rows).toHaveLength(7);
+    expect(rows[6].textContent).toContain('INC0001769649');
+    expect(fixture.nativeElement.querySelector('.generation-pending-incidents').textContent).toContain('INC2');
+    const generate = vi.spyOn(TestBed.inject(SwapDocumentService), 'generate');
+    await component.generateSwap();
+    expect(generate).not.toHaveBeenCalled();
+    component.swapFiles.set([...confirmed.map(item => new File(['xlsx'], `COATEND${item.coatendNumber}.xlsx`)),
+      new File(['incident'], 'INC0001769649.xlsx')]);
+    expect(component.swapFileError()).toBe('');
+    component.swapFiles.update(files => files.filter(file => !file.name.startsWith('INC')));
+    expect(component.swapFileError()).toContain('INC0001769649');
+  });
+
+  it('allows dates with only confirmed Incidents and keeps pending-only Incident dates disabled', async () => {
+    vi.spyOn(TestBed.inject(IncidentService), 'getSwapDates').mockReturnValue(of([
+      { date: '2026-11-11', confirmed: [], pending: [], pendingIncidents: [], confirmedIncidents: [{ id: 'i1', code: 'INC1', description: 'Confirmed', completed: true }] },
+      { date: '2026-11-12', confirmed: [], pending: [], confirmedIncidents: [], pendingIncidents: [{ id: 'i2', code: 'INC2', description: 'Pending', completed: false }] }
+    ]));
+    component.openSwapOptions();
+    await fixture.whenStable();
+    expect(component.hasConfirmedSwap()).toBe(true);
+    expect(fixture.nativeElement.querySelector('option[value="2026-11-11"]').disabled).toBe(false);
+    expect(fixture.nativeElement.querySelector('option[value="2026-11-12"]').disabled).toBe(true);
+    component.selectSwapDate('2026-11-12');
+    expect(component.selectedSwap()).toBeNull();
+    component.selectSwapDate('2026-11-11');
+    expect(component.selectedSwap()?.confirmedIncidents?.[0].code).toBe('INC1');
+  });
+
   it('shows loading and cancels the request when leaving SWAP', async () => {
     const response = new Subject<SwapDateOption[]>();
     vi.spyOn(TestBed.inject(CoatendService), 'getSwapDates').mockReturnValue(response);
@@ -217,6 +266,25 @@ describe('ExportToolbar', () => {
     expect(component.swapLoading()).toBe(false);
     response.next([{ date: '2026-10-26', confirmed: [], pending: [] }]);
     expect(component.swapDates()).toEqual([]);
+  });
+
+  it('refreshes Incident confirmation on reopening and reports Incident lookup errors instead of incomplete dates', () => {
+    const incident = { id: 'i1', code: 'INC001', description: 'Incident', completed: false };
+    const load = vi.spyOn(TestBed.inject(IncidentService), 'getSwapDates')
+      .mockReturnValueOnce(of([{ date: '2026-11-11', confirmed: [], pending: [], confirmedIncidents: [], pendingIncidents: [incident] }]))
+      .mockReturnValueOnce(of([{ date: '2026-11-11', confirmed: [], pending: [], confirmedIncidents: [{ ...incident, completed: true }], pendingIncidents: [] }]))
+      .mockReturnValueOnce(throwError(() => new Error('Failure')));
+    component.openSwapOptions();
+    component.selectSwapDate('2026-11-11');
+    expect(component.selectedSwap()).toBeNull();
+    component.closeGenerationDialog();
+    component.openSwapOptions();
+    component.selectSwapDate('2026-11-11');
+    expect(component.selectedSwap()?.confirmedIncidents?.[0].code).toBe('INC001');
+    component.loadSwapDates();
+    expect(component.swapError()).not.toBe('');
+    expect(component.swapDates()).toEqual([]);
+    expect(load).toHaveBeenCalledTimes(3);
   });
 
   it('clears old selection and supports retry after a query error', async () => {
@@ -282,6 +350,7 @@ describe('ExportToolbar', () => {
     });
 
     it('keeps the native file count synchronized when removing selected files', async () => {
+      component.swapFiles.set([]);
       const first = new File(['first'], 'COATEND8579.xlsx');
       const second = new File(['second'], 'COATEND8753.xlsx');
       await fixture.whenStable();
@@ -320,6 +389,20 @@ describe('ExportToolbar', () => {
       expect(component.swapFiles()).toHaveLength(1);
     });
 
+    it('accumulates successive selections from separate folders without losing or duplicating previous files', () => {
+      component.swapFiles.set([]);
+      const firstBatch = Array.from({ length: 5 }, (_, index) => new File([`file${index}`], `COATEND${index + 1}.xlsx`, { lastModified: 1 }));
+      const last = new File(['last'], 'COATEND6.xlsx', { lastModified: 2 });
+      const select = (files: File[]) => component.onSwapFilesSelected({ target: { files, value: '' } } as unknown as Event);
+      select(firstBatch);
+      select([last]);
+      expect(component.swapFiles()).toEqual([...firstBatch, last]);
+      select([firstBatch[0]]);
+      expect(component.swapFiles()).toHaveLength(6);
+      select([]);
+      expect(component.swapFiles()).toHaveLength(6);
+    });
+
     it('generates once, writes the document and exposes the separate review', async () => {
       const response = new Subject<typeof document>();
       const generate = vi.spyOn(TestBed.inject(SwapDocumentService), 'generate').mockReturnValue(response);
@@ -329,6 +412,7 @@ describe('ExportToolbar', () => {
       Object.defineProperty(window, 'showSaveFilePicker', { configurable: true, value: picker });
       const operation = component.generateSwap();
       await Promise.resolve();
+      expect(picker).toHaveBeenCalledWith(expect.objectContaining({ suggestedName: 'Preparação SWAP AIX - 2026.11.18.docx' }));
       await component.generateSwap();
       expect(generate).toHaveBeenCalledOnce();
       expect(component.swapGenerating()).toBe(true);
