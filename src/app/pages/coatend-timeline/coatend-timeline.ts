@@ -101,7 +101,7 @@ loadTimeline(coatendId: string) {
 
   loadDevelopers() {
     this.developerService.getAll()
-      .subscribe(res => this.developers = res);
+      .subscribe(res => this.developers = res.filter(developer => developer.eligibleForNewAssignment === true));
   }
 
   requiresDeveloper(activity: string): boolean {

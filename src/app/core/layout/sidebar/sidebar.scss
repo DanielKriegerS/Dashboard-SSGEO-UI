@@ -197,6 +197,7 @@
 .submenu a { min-height: 44px; font-size: .9375rem; padding: .5rem .75rem; border-radius: 6px; white-space: normal; }
 .sidebar.collapsed .submenu-toggle { display: none; }
 @media (max-width: 600px) {
-  .sidebar { width: 210px; }
-  .sidebar.collapsed { width: 60px; }
+  :host { min-height: 0; width: 100%; }
+  .sidebar, .sidebar.collapsed { width: 100%; min-height: 0; }
+  .sidebar.collapsed .menu { display: none; }
 }

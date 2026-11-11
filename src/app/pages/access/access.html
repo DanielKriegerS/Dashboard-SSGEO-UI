@@ -1,0 +1,22 @@
+<section class="access-page" aria-labelledby="admission-title">
+  <h2 id="admission-title" class="h5">Acesso ao Squad</h2>
+  @if (error()) { <p class="alert alert-danger" role="alert">{{ error() }}</p> }
+  @if (busy()) { <p role="status">Consultando pedido...</p> }
+  @switch (request()?.status) {
+    @case ('PENDING') { <p role="status">Pedido pendente de aprovacao.</p> }
+    @case ('APPROVED') { <p role="status">Pedido aprovado. Verifique a sessao para acessar seu Squad.</p> }
+    @case ('REJECTED') { <p role="status">Pedido rejeitado.</p> }
+  }
+  @if (auth.state() === 'unassigned' && request()?.status !== 'PENDING' && request()?.status !== 'APPROVED') {
+    <form [formGroup]="form" (ngSubmit)="submit()">
+      <label class="form-label" for="admission-code">Codigo de admissao</label>
+      <input id="admission-code" type="password" class="form-control" formControlName="code" autocomplete="off" required>
+      <button type="submit" class="btn btn-primary mt-3" [disabled]="busy() || form.invalid">Solicitar acesso</button>
+    </form>
+  }
+  @if (auth.state() === 'active') {
+    <a class="btn btn-primary" routerLink="/">Abrir planejamento</a>
+  } @else {
+    <button type="button" class="btn btn-outline-secondary mt-3" (click)="load()" [disabled]="busy()">Atualizar pedido</button>
+  }
+</section>

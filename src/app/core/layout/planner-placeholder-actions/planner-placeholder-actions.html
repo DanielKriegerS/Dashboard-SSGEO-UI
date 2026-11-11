@@ -322,7 +322,7 @@
               [disabled]="isMovingActivity"
               [required]="developerRequired">
               <option value="" disabled>Selecione um desenvolvedor</option>
-              <option *ngFor="let developer of developers" [value]="developer.id">
+              <option *ngFor="let developer of availableDevelopers" [value]="developer.id">
                 {{ developer.name }}
               </option>
             </select>

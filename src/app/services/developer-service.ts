@@ -15,7 +15,11 @@ export class DeveloperService {
     return this.http.get<DeveloperModel[]>(this.baseUrl);
   }
 
-  create(data: DeveloperModel) {
+  getEligibleMembers(): Observable<{ membershipId: string; displayName: string }[]> {
+    return this.http.get<{ membershipId: string; displayName: string }[]>(`${this.baseUrl}/eligible-members`);
+  }
+
+  create(data: Pick<DeveloperModel, 'name' | 'color'> & { membershipId: string }) {
     return this.http.post(this.baseUrl, data);
   }
 

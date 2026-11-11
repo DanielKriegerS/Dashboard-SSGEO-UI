@@ -448,6 +448,57 @@ describe('ExportToolbar', () => {
       expect(generate).toHaveBeenCalledOnce();
     });
 
+    it.each(['create', 'write', 'close'])('shows an aborted %s after choosing a destination instead of silently cancelling', async stage => {
+      const error = new DOMException('File operation aborted', 'AbortError');
+      vi.spyOn(TestBed.inject(SwapDocumentService), 'generate').mockReturnValue(of(document));
+      const writable = {
+        write: vi.fn().mockResolvedValue(undefined), close: vi.fn().mockResolvedValue(undefined),
+        abort: vi.fn().mockResolvedValue(undefined)
+      };
+      const destination = { name: 'swap.docx', createWritable: vi.fn().mockResolvedValue(writable) };
+      if (stage === 'create') destination.createWritable.mockRejectedValue(error);
+      if (stage === 'write') writable.write.mockRejectedValue(error);
+      if (stage === 'close') writable.close.mockRejectedValue(error);
+      Object.defineProperty(window, 'showSaveFilePicker', { configurable: true, value: vi.fn().mockResolvedValue(destination) });
+      await component.generateSwap();
+      await fixture.whenStable();
+      expect(component.swapSaved()).toBe(false);
+      expect(component.swapResult()).toEqual(document);
+      expect(component.swapGenerationError()).toContain('não foi possível salvá-lo');
+      expect(fixture.nativeElement.querySelector('.generation-error')?.textContent).toContain('não foi possível salvá-lo');
+    });
+
+    it('shows an aborted generation after choosing the destination as an error', async () => {
+      const destination = { name: 'swap.docx', createWritable: vi.fn() };
+      Object.defineProperty(window, 'showSaveFilePicker', { configurable: true, value: vi.fn().mockResolvedValue(destination) });
+      vi.spyOn(TestBed.inject(SwapDocumentService), 'generate').mockReturnValue(
+        throwError(() => new DOMException('Generation aborted', 'AbortError'))
+      );
+      await component.generateSwap();
+      expect(destination.createWritable).not.toHaveBeenCalled();
+      expect(component.swapResult()).toBeNull();
+      expect(component.swapGenerationError()).toContain('Não foi possível gerar');
+      expect(component.swapGenerating()).toBe(false);
+    });
+
+    it('shows an aborted save retry and does not keep a stale saved status', async () => {
+      const generate = vi.spyOn(TestBed.inject(SwapDocumentService), 'generate').mockReturnValue(of(document));
+      const write = vi.fn().mockResolvedValue(undefined);
+      const destination = { name: 'swap.docx', createWritable: vi.fn().mockResolvedValue({
+        write, close: vi.fn().mockResolvedValue(undefined), abort: vi.fn().mockResolvedValue(undefined)
+      }) };
+      Object.defineProperty(window, 'showSaveFilePicker', { configurable: true, value: vi.fn().mockResolvedValue(destination) });
+      await component.generateSwap();
+      expect(component.swapSaved()).toBe(true);
+      write.mockRejectedValueOnce(new DOMException('Write aborted', 'AbortError'));
+      await component.saveGeneratedSwap();
+      expect(component.swapSaved()).toBe(false);
+      expect(component.swapResult()).toEqual(document);
+      expect(component.swapGenerationError()).toContain('Não foi possível salvar');
+      expect(component.swapGenerating()).toBe(false);
+      expect(generate).toHaveBeenCalledOnce();
+    });
+
     it('shows server validation feedback without saving a document', async () => {
       const destination = { name: 'swap.docx', createWritable: vi.fn() };
       Object.defineProperty(window, 'showSaveFilePicker', { configurable: true, value: vi.fn().mockResolvedValue(destination) });

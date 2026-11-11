@@ -14,7 +14,12 @@
 }
 
 .connection-fallback { max-width: 680px; margin: 3rem auto; border-top: 3px solid #a33333; padding-top: 1.5rem; }
-@media (max-width: 600px) { .content { padding: 1rem; } }
+.session-status { max-width: 720px; margin: 2rem auto; border-top: 3px solid #0a6b55; padding-top: 1.5rem; }
+.session-status h1 { font-size: 1.5rem; overflow-wrap: anywhere; }
+.session-actions, .session-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
+.session-toolbar { justify-content: flex-end; margin-bottom: 1rem; }
+.session-actions .btn { display: inline-flex; align-items: center; gap: .5rem; white-space: normal; }
+app-sidebar[hidden], .workspace[hidden] { display: none; }
 
 app-sidebar {
   display: flex;
@@ -31,4 +36,10 @@ app-sidebar {
   padding: 2rem;
 
   background-color: #f8fafc;
+}
+
+@media (max-width: 600px) {
+  .layout-root { flex-direction: column; }
+  app-sidebar { min-height: 0; width: 100%; }
+  .content { width: 100%; min-height: 0; padding: 1rem; }
 }

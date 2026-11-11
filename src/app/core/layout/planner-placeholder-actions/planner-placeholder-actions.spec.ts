@@ -27,6 +27,22 @@ describe('PlannerPlaceholderActions', () => {
     expect(component).toBeTruthy();
   });
 
+  it('offers only eligible new executors and retains the original historical executor for unchanged activity', () => {
+    const developers = [
+      { id: 'active', name: 'Ativo', color: '#123456', eligibleForNewAssignment: true },
+      { id: 'historical', name: 'Historico', color: '#abcdef', eligibleForNewAssignment: false },
+      { id: 'unlinked', name: 'Sem vinculo', color: '#112233' }
+    ];
+    component.open({ type: 'activity', activity: Activity.DEVELOPMENT });
+    component.developers = developers;
+    expect(component.availableDevelopers.map(developer => developer.id)).toEqual(['active']);
+    component.open({ type: 'activity', activityId: 'old', activity: Activity.DEVELOPMENT, developerId: 'historical' });
+    component.developers = developers;
+    expect(component.availableDevelopers.map(developer => developer.id)).toEqual(['active', 'historical']);
+    component.changeActivityEditMode('resize'); component.onActivityChange(Activity.TESTING_TU);
+    expect(component.availableDevelopers.map(developer => developer.id)).toEqual(['active']);
+  });
+
   it('focuses the dialog, traps Tab and restores focus on Escape without submitting', async () => {
     const trigger = document.createElement('button');
     document.body.append(trigger);

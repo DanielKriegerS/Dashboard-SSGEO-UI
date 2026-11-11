@@ -287,9 +287,11 @@ export class ExportToolbar {
     this.swapGenerationError.set('');
     this.swapResult.set(null);
     this.swapSaved.set(false);
+    let choosingDestination = true;
     try {
       const date = selected.date.replaceAll('-', '.');
       const destination = await this.chooseSwapDestination(`Preparação SWAP AIX - ${date}.docx`);
+      choosingDestination = false;
       const result = await firstValueFrom(this.swapDocumentService.generate(selected, this.swapFiles()).pipe(
         takeUntilDestroyed(this.destroyRef)
       ));
@@ -303,7 +305,7 @@ export class ExportToolbar {
       const input = this.document.querySelector<HTMLInputElement>('#swap-upload');
       if (input) input.value = '';
     } catch (error) {
-      if (!this.isCancelled(error)) {
+      if (!choosingDestination || !this.isCancelled(error)) {
         const message = error !== null && typeof error === 'object' && 'error' in error
           ? (error.error as { message?: string } | null)?.message : null;
         this.swapGenerationError.set(message || (this.swapResult()
@@ -319,8 +321,11 @@ export class ExportToolbar {
     const result = this.swapResult();
     if (!result || this.swapGenerating()) return;
     this.swapGenerating.set(true);
+    let choosingDestination = true;
     try {
       const destination = await this.chooseSwapDestination(result.fileName);
+      choosingDestination = false;
+      this.swapSaved.set(false);
       const bytes = Uint8Array.from(atob(result.documentBase64), character => character.charCodeAt(0));
       await this.savePlannerFile(new Blob([bytes.buffer], {
         type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
@@ -328,7 +333,9 @@ export class ExportToolbar {
       this.swapSaved.set(true);
       this.swapGenerationError.set('');
     } catch (error) {
-      if (!this.isCancelled(error)) this.swapGenerationError.set('Não foi possível salvar o documento. Tente novamente.');
+      if (!choosingDestination || !this.isCancelled(error)) {
+        this.swapGenerationError.set('Não foi possível salvar o documento. Tente novamente.');
+      }
     } finally {
       this.swapGenerating.set(false);
     }

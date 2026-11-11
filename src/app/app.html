@@ -1,17 +1,53 @@
 <div class="layout-root">
   
   <app-feedback></app-feedback>
-  <app-sidebar></app-sidebar>
+  <app-sidebar [hidden]="auth.blocked()"></app-sidebar>
 
   <main class="content">
+    @if (auth.blocked()) {
+      <section class="session-status" role="status" aria-labelledby="session-title">
+        <h1 id="session-title">{{ sessionTitle() }}</h1>
+        @if (auth.workspaceOpened()) {
+          <p>As edições não salvas estão mantidas nesta aba. Nenhuma gravação será repetida automaticamente.</p>
+        }
+        @if (auth.state() === 'changed') {
+          <p>O rascunho permanece bloqueado até retornar à conta e ao Squad originais.</p>
+        }
+        @if (auth.state() !== 'checking') {
+          <div class="session-actions">
+            <button type="button" class="btn btn-primary" (click)="auth.openLogin()" [disabled]="auth.busy()">
+              <img src="/icons/log-in.svg" width="18" height="18" alt=""> Entrar com Google
+            </button>
+            <button type="button" class="btn btn-outline-secondary" (click)="auth.refresh().subscribe()" [disabled]="auth.busy()">
+              <img src="/icons/refresh-cw.svg" width="18" height="18" alt=""> Verificar sessão
+            </button>
+          </div>
+        }
+      </section>
+      @if (auth.state() === 'unassigned') { <app-access></app-access> }
+    } @else {
+      <header class="session-toolbar" aria-label="Sessão">
+        <span>{{ auth.user()?.name }}</span>
+        @if (auth.user()?.role === 'ADMIN') { <a routerLink="/admin/members">Membros e pedidos</a> }
+        <button type="button" class="btn btn-sm btn-outline-secondary" (click)="logout()" [disabled]="auth.busy()">
+          <img src="/icons/log-out.svg" width="16" height="16" alt=""> Sair
+        </button>
+      </header>
+    }
+    @if (auth.notice()) { <p role="alert">{{ auth.notice() }}</p> }
     @if (connection.unavailable()) {
       <section class="connection-fallback" role="alert" aria-labelledby="connection-title">
         <h1 id="connection-title">Servidor indisponível</h1>
-        <p>Não foi possível conectar após três tentativas. Verifique sua conexão e tente novamente.</p>
-        <button type="button" class="btn btn-primary" (click)="connection.reload()">Recarregar página</button>
+        <p>Não foi possível conectar após três tentativas. As edições não salvas continuam nesta aba.</p>
+        <button type="button" class="btn btn-outline-secondary" aria-label="Fechar aviso" (click)="connection.unavailable.set(false)">
+          <img src="/icons/x.svg" width="16" height="16" alt="">
+        </button>
       </section>
-    } @else {
-      <router-outlet></router-outlet>
+    }
+    @if (auth.workspaceOpened()) {
+      <div class="workspace" [hidden]="auth.blocked()" [inert]="auth.blocked()">
+        <router-outlet></router-outlet>
+      </div>
     }
   </main>
 </div>

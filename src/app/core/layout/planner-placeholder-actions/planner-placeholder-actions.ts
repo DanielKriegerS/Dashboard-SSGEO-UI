@@ -65,6 +65,11 @@ export class PlannerPlaceholderActions {
   developers: DeveloperModel[] = [];
   developerLoadError = '';
 
+  get availableDevelopers(): DeveloperModel[] {
+    return this.developers.filter(developer => developer.eligibleForNewAssignment === true
+      || (this.isEditingActivity && this.activity === this.request?.activity && developer.id === this.request?.developerId));
+  }
+
   get activities(): Activity[] {
     return Object.values(Activity).filter(activity => this.ownerKind === 'incident'
       ? activity !== Activity.ADMINISTRATIVE_TASKS : activity !== Activity.ANALYSIS);

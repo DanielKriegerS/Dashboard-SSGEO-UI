@@ -7,6 +7,7 @@ import { FormField } from '../../models/components/FormField';
 import { Dynamicformcomponent } from "../../shared/components/dynamicformcomponent/dynamicformcomponent";
 import { DeveloperUpdatePayload } from '../../models/developer/DeveloperUpdatePayload';
 import { FeedbackService } from '../../services/feedback';
+import { forkJoin } from 'rxjs';
 
 @Component({
   selector: 'app-developers',
@@ -16,6 +17,12 @@ import { FeedbackService } from '../../services/feedback';
 })
 export class Developers implements OnInit{
   developers: DeveloperModel[] = [];
+  eligibleMembers: { membershipId: string; displayName: string }[] = [];
+  selectedMembershipId = '';
+  editingMembershipId = '';
+  get availableMembers() {
+    return this.eligibleMembers.filter(member => !this.developers.some(developer => developer.membershipId === member.membershipId));
+  }
   newDev = {
     name: '',
     color: '#000000'
@@ -44,15 +51,21 @@ export class Developers implements OnInit{
   }
 
   load() {
-    this.service.getAll().subscribe(
+    forkJoin({ developers: this.service.getAll(), members: this.service.getEligibleMembers() }).subscribe(
       res => {
-      this.developers = res
+      this.developers = res.developers;
+      this.eligibleMembers = res.members;
       this.cdr.detectChanges();
       });
   }
 
   createDeveloper = (data: DeveloperModel) => {
-    this.service.create(data).subscribe(() => {
+    if (!this.availableMembers.some(member => member.membershipId === this.selectedMembershipId)) {
+      this.feedback.error('Selecione um membro elegivel para o desenvolvedor.');
+      return;
+    }
+    this.service.create({ name: data.name, color: data.color, membershipId: this.selectedMembershipId }).subscribe(() => {
+      this.selectedMembershipId = '';
       this.feedback.success('Desenvolvedor criado com sucesso!');
       this.load()
     });
@@ -61,6 +74,7 @@ export class Developers implements OnInit{
   
 startEdit(dev: DeveloperModel): void {
     this.editingDeveloperId = dev.id;
+  this.editingMembershipId = '';
 
     this.editData = {
       name: dev.name,
@@ -84,7 +98,11 @@ startEdit(dev: DeveloperModel): void {
       payload.color = this.editData.color;
     }
 
-    if (!payload.name && !payload.color) {
+    if (!dev.membershipId && this.availableMembers.some(member => member.membershipId === this.editingMembershipId)) {
+      payload.membershipId = this.editingMembershipId;
+    }
+
+    if (!payload.name && !payload.color && !payload.membershipId) {
       this.cancelEdit();
       return;
     }

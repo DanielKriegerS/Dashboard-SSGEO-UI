@@ -1,5 +1,56 @@
 # DashboardSSGEOUi
 
+## Configuracao da API por ambiente - etapa 2 do deploy
+
+- `npm start` usa `/api` same-origin. `proxy.conf.json`, integrado ao `angular.json`,
+  encaminha `/api/**` a `http://127.0.0.1:8080`, removendo o prefixo `/api`.
+  O build de desenvolvimento tambem usa `/api`; servi-lo fora de `ng serve`
+  exige um proxy equivalente. Nao inicia nem reinicia o backend automaticamente.
+- `npm run build` usa a configuracao `production` por padrao e substitui
+  `src/app/config/api.config.ts` por `src/app/config/api.config.prod.ts`.
+  O resultado usa `/api`, na mesma origem do frontend, sem dominio fixo.
+- O proxy de producao devera servir os arquivos Angular e encaminhar `/api/*`
+  para o backend, removendo o prefixo `/api`. Por exemplo, `/api/quarters`
+  deve chegar ao Spring como `/quarters`. Esse proxy pertence a uma etapa futura.
+- Servir o build de producao estaticamente sem esse proxy nao fornece API funcional.
+  `ng serve`, inclusive com configuracao production, usa o proxy DEV local.
+- Configuracoes do frontend sao publicas: nunca incluir senhas, tokens privados
+  ou credenciais de banco nesses arquivos. A URL e selecionada durante o build,
+  nao por variaveis de ambiente do servidor depois da compilacao.
+
+## Sessao e acesso - B6 local verificado
+
+- Backend: 30 minutos de inatividade HTTP / oito horas absolutas desde login.
+  Padrao de sessao com CSRF; nao ha tokens Google em localStorage/sessionStorage.
+- Expiracao bloqueia e oculta o editor sem recria-lo. `Entrar com Google` abre
+  janela separada; `Verificar sessao` consulta novamente o backend. A mesma
+  conta/Squad reabre o rascunho; outra conta/Squad o mantem bloqueado.
+- Falhas de rede preservam o editor, sem recarregar a pagina. Gravacoes nao sao
+  repetidas automaticamente. Se a resposta de uma gravacao se perdeu, conferir
+  o estado no servidor antes de tentar novamente, pois ela pode ter concluido.
+- Rascunho permanece apenas na memoria da aba aberta. Reload, fechamento/crash
+  e perda do processo nao tem recuperacao implementada; isto nao e autosave/offline.
+- Conta sem membership solicita acesso por codigo e consulta seu pedido em
+  `/access`, sem catalogo publico de Squads nem aprovacao implicita.
+- ADMIN acessa `/admin/members` pelo link da sessao: pedidos, ROLE, subgrupo,
+  estado e quatro cores coletivas exigem confirmacao explicita. MEMBER nao acessa
+  essa tela, mas mantem acesso a Features e planejamento sob `/admin`.
+- Cadastro de desenvolvedor exige membership elegivel selecionado explicitamente;
+  perfil historico sem vinculo pode ser associado manualmente, sem inferencia de
+  nome/email nem troca de uma identidade ja vinculada. Novas atribuicoes mostram
+  elegiveis; manutencao da mesma atividade preserva o executor historico.
+- Em mobile, menu e conteudo ficam empilhados; recolher menu preserva o editor.
+- Em 2026-11-10: 346 testes/33 arquivos aprovados com dois workers; dois lotes
+  anteriores tiveram timeouts com paralelismo padrao, sem falha de assercao.
+  Timeouts e testes nao foram relaxados. Apos ajuste CSS mobile, sete testes
+  shell/sidebar e novos builds DEV/prod passaram. Budget inicial 647.20kB > 500kB,
+  export-toolbar 5.36kB e planner 5.15kB > 4kB continuam como avisos.
+- Navegador com API descartavel verificou admissao, guards, confirmacoes, CSRF,
+  conflito 409 mantendo editor, vinculo explicito, cores, logout e rascunho.
+  Desktop 1280x900/mobile 390x844 conferidos; mobile sem controles fora dos limites.
+  Nao e E2E completo com banco, Google real, HTTPS/Caddy ou prontidao de publicacao.
+- Nao houve restart Java/H2, importacao, bootstrap, commit, push ou deploy.
+
 ## Fase 3 - Geradores de Incidentes - 04/11/2026
 
 - Upload SWAP acumula escolhas sucessivas, inclusive de pastas diferentes.
@@ -71,10 +122,13 @@ No PowerShell, executar todas as suites focadas com includes explicitos:
 ```powershell
 $specs = (Get-Content tsconfig.planner.spec.json -Raw | ConvertFrom-Json).include
 $includes = @($specs | Where-Object { $_ -like '*.spec.ts' } | ForEach-Object { "--include=$_" })
-npm test -- --watch=false --ts-config=tsconfig.planner.spec.json @includes
+npm test -- --watch=false --ts-config=tsconfig.planner.spec.json --runner-config=vitest.config.ts @includes
 ```
 
 Se usar `npm --prefix` no Windows, preservar a letra canonica do drive (`C:`).
+`vitest.config.ts` limita a dois workers; nao altera timeouts ou assercoes.
+O comando npm test geral ainda encontra specs legadas quebradas fora desse conjunto;
+os 346 resultados nao representam toda a suite historica do repositorio.
 Nesta revisao, `c:` reproduziu falha de localizacao do runner Vitest; `C:` funcionou.
 O plano e o checkpoint de retomada estao no repositorio backend, em
 `.specs/incidents/frontend/`.
@@ -90,7 +144,7 @@ O plano e o checkpoint de retomada estao no repositorio backend, em
   submenu; o chevron apenas alterna a expansao. O sidebar pode ser recolhido.
 - Leituras GET com falha de conexao ou HTTP 502/503/504 fazem tres tentativas,
   com intervalo de dez segundos. Somente apos esgotar as tentativas aparece o
-  fallback global. **Recarregar pagina** inicia um novo ciclo. Gravacoes e erros
+  aviso global sem desmontar o editor; fechar o aviso nao recarrega a pagina. Gravacoes e erros
   de negocio nao sao repetidos automaticamente. Sair do Planner cancela suas
   leituras pendentes. A Home e as paginas de menus nao precisam da API.
 - Alteracoes de atividades que preservam as janelas dos marcos confirmados

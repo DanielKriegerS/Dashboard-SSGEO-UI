@@ -1,6 +1,9 @@
 import { Routes } from '@angular/router';
+import { accessGuard, adminGuard } from './core/auth/access.guard';
 
 export const routes: Routes = [
+  { path: 'access', loadComponent: () => import('./pages/access/access').then(m => m.AccessPage) },
+  { path: '', canActivateChild: [accessGuard], children: [
   { path: '', pathMatch: 'full', title: 'Home - SSGEO', loadComponent: () => import('./pages/menu/menu').then(m => m.MenuPage) },
   { path: 'planning', title: 'Planejamento - SSGEO', data: { menu: 'planning' }, loadComponent: () => import('./pages/menu/menu').then(m => m.MenuPage) },
   { path: 'planner', loadComponent: () => import('./core/main/main/main').then(m => m.Main) },
@@ -17,6 +20,7 @@ export const routes: Routes = [
   {
     path: 'admin', loadComponent: () => import('./pages/administration/administration').then(m => m.Administration),
     children: [
+      { path: 'members', canActivate: [adminGuard], loadComponent: () => import('./pages/administration/members/members').then(m => m.MembersPage) },
       { path: '', pathMatch: 'full', title: 'Administração - SSGEO', data: { menu: 'admin' }, loadComponent: () => import('./pages/menu/menu').then(m => m.MenuPage) },
       { path: 'developers', loadComponent: () => import('./pages/developers/developers').then(m => m.Developers) },
       { path: 'features', loadComponent: () => import('./pages/features/features').then(m => m.Features) },
@@ -26,4 +30,5 @@ export const routes: Routes = [
   },
   { path: 'coatends/:id/timeline', loadComponent: () => import('../app/pages/coatend-timeline/coatend-timeline').then(m => m.CoatendTimelineComponent) },
   { path: '**', redirectTo: '' }
+  ] }
 ];

@@ -56,6 +56,9 @@ const reportNotice = (event: HttpEvent<unknown>) => {
 };
 
 function extractErrorMessage(error: HttpErrorResponse): string {
+  if (error.status === 401) { return 'Sessão indisponível. As edições não salvas permanecem nesta aba.'; }
+  if (error.status === 403) { return 'Operação não autorizada. As edições não salvas foram mantidas.'; }
+  if (error.error?.code === 'SESSION_CONTEXT_CHANGED') { return 'A conta ou o Squad mudou. O rascunho foi bloqueado.'; }
   if (error.error?.message) {
     return error.error.message;
   }

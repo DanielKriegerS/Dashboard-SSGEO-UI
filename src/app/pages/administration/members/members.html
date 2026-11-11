@@ -1,0 +1,90 @@
+<header class="members-heading">
+  <h1 class="h4">Membros e pedidos</h1>
+  <button type="button" class="btn btn-outline-secondary" (click)="load()" [disabled]="busy()">Atualizar</button>
+</header>
+@if (auth.user()?.role !== 'ADMIN') {
+  <p role="alert">Administracao disponivel somente para ADMIN do Squad.</p>
+} @else {
+  @if (busy()) { <p role="status">Processando...</p> }
+  @if (error()) { <p role="alert" class="alert alert-danger">{{ error() }}</p> }
+  @if (notice()) { <p role="status" class="alert alert-success">{{ notice() }}</p> }
+  @if (squad(); as currentSquad) {
+    @if (!auth.blocked() && currentSquad.id === auth.user()?.squadId) {
+      <section class="members-section" aria-labelledby="squad-title">
+        <h2 id="squad-title" class="h5">Equipe</h2>
+        <p>{{ currentSquad.name }}</p>
+        <p id="squad-code-label">Codigo da equipe</p>
+        <div class="squad-code-line">
+          <code aria-labelledby="squad-code-label">{{ currentSquad.admissionCode }}</code>
+          <button type="button" class="btn btn-outline-secondary copy-code-button" (click)="copySquadCode()"
+            [disabled]="busy()" aria-label="Copiar codigo da equipe" title="Copiar codigo da equipe">
+            <span class="copy-code-icon" aria-hidden="true"></span>
+          </button>
+        </div>
+      </section>
+    }
+  }
+  @if (decision(); as current) {
+    <section class="confirmation" aria-labelledby="decision-title">
+      <h2 id="decision-title" class="h5">Confirmar alteracao</h2>
+      @switch (current.kind) {
+        @case ('approve') { <p>Aprovar {{ current.request.name }} como MEMBER em {{ current.group }}?</p> }
+        @case ('reject') { <p>Rejeitar o pedido de {{ current.request.name }}?</p> }
+        @case ('style') { <p>{{ activityLabels[current.activity] }}: alterar cor para {{ current.color }}?</p> }
+        @case ('member') { <p>{{ current.member.name }}: {{ current.change.role }}, {{ current.change.operationalGroup }}, vinculo {{ current.change.active ? 'ativo' : 'inativo' }}.</p> }
+      }
+      <div class="actions">
+        <button type="button" class="btn btn-primary" (click)="apply()" [disabled]="busy()">Confirmar</button>
+        <button type="button" class="btn btn-outline-secondary" (click)="decision.set(null)" [disabled]="busy()">Cancelar</button>
+      </div>
+    </section>
+  }
+  <section class="members-section" aria-labelledby="requests-title">
+    <h2 id="requests-title" class="h5">Pedidos pendentes ({{ pending().length }})</h2>
+    @for (request of pending(); track request.id) {
+      <div class="request-row">
+        <div><strong>{{ request.name }}</strong><br><span>{{ request.requestedAt | date:'dd/MM/yyyy HH:mm' }}</span></div>
+        <label [for]="'group-' + request.id">Subgrupo</label>
+        <select #approvalGroup class="form-select" [id]="'group-' + request.id" [disabled]="busy()">
+          <option value="DESENVOLVEDORES">Desenvolvedores</option><option value="ADMINISTRATIVO">Administrativo</option><option value="SWAP">SWAP</option>
+        </select>
+        <button type="button" class="btn btn-primary" (click)="approve(request, approvalGroup.value)" [disabled]="busy()">Aprovar</button>
+        <button type="button" class="btn btn-outline-danger" (click)="reject(request)" [disabled]="busy()">Rejeitar</button>
+      </div>
+    } @empty { <p>Nenhum pedido pendente.</p> }
+  </section>
+  <section class="members-section" aria-labelledby="members-title">
+    <h2 id="members-title" class="h5">Membros ({{ members().length }})</h2>
+    @for (member of members(); track member.id) {
+      <article class="member-row" [attr.aria-label]="member.name">
+        <div><strong>{{ member.name }}</strong><br><span>{{ member.role }} · {{ member.operationalGroup }} · {{ member.active ? 'Vinculo ativo' : 'Vinculo inativo' }}</span>
+          @if (!member.accountActive) { <p class="text-danger">Conta desativada</p> }
+        </div>
+        @if (editing() === member.id) {
+          <form [formGroup]="form" (ngSubmit)="prepareMember(member)" class="member-form">
+            <label [for]="'role-' + member.id">ROLE</label>
+            <select class="form-select" [id]="'role-' + member.id" formControlName="role"><option value="MEMBER">MEMBER</option><option value="ADMIN">ADMIN</option></select>
+            <label [for]="'member-group-' + member.id">Subgrupo</label>
+            <select class="form-select" [id]="'member-group-' + member.id" formControlName="operationalGroup">
+              <option value="DESENVOLVEDORES">Desenvolvedores</option><option value="ADMINISTRATIVO">Administrativo</option><option value="SWAP">SWAP</option>
+            </select>
+            <label class="form-check"><input class="form-check-input" type="checkbox" formControlName="active"> Vinculo ativo</label>
+            <div class="actions"><button class="btn btn-primary" type="submit" [disabled]="busy()">Revisar alteracao</button>
+              <button class="btn btn-outline-secondary" type="button" (click)="editing.set(null); decision.set(null)" [disabled]="busy()">Cancelar edicao</button></div>
+          </form>
+        } @else { <button type="button" class="btn btn-outline-secondary" (click)="startEdit(member)" [disabled]="busy() || !!decision()">Editar</button> }
+      </article>
+    } @empty { <p>Nenhum membro encontrado.</p> }
+  </section>
+  <section class="members-section" aria-labelledby="colors-title">
+    <h2 id="colors-title" class="h5">Cores das atividades coletivas</h2>
+    @for (style of styles(); track style.activity) {
+      <div class="request-row">
+        <label [for]="'color-' + style.activity">{{ activityLabels[style.activity] }}</label>
+        <input #activityColor type="color" class="form-control form-control-color" [id]="'color-' + style.activity"
+          [value]="style.color" [disabled]="busy()" [attr.aria-label]="'Cor de ' + activityLabels[style.activity]">
+        <button type="button" class="btn btn-outline-secondary" (click)="prepareStyle(style.activity, activityColor.value)" [disabled]="busy()">Revisar cor</button>
+      </div>
+    }
+  </section>
+}
