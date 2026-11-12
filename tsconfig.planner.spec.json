@@ -9,6 +9,7 @@
     "src/app/core/auth/access.guard.spec.ts",
     "src/app/services/membership-access.spec.ts",
     "src/app/pages/administration/members/members.spec.ts",
+    "src/app/pages/administration/global-requests.spec.ts",
     "src/app/services/authentication.spec.ts",
     "src/app/interceptors/authentication-interceptor.spec.ts",
     "src/app/interceptors/http-error-interceptor.spec.ts",

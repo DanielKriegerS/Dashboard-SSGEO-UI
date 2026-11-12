@@ -58,6 +58,14 @@ describe('AuthenticationService', () => {
     }
   });
 
+  it('pins the authenticated user without inventing a squad for unassigned requests', () => {
+    session.refresh().subscribe();
+    finishRefresh({ ...owner, accessState: 'NO_MEMBERSHIP', squadId: undefined, role: undefined });
+    expect(session.contextHeaders()).toEqual({ 'X-Expected-User-Id': 'owner' });
+    session.expire();
+    expect(session.contextHeaders()).toEqual({});
+  });
+
   it('does not navigate or discard the workspace when login is unavailable', () => {
     session.refresh().subscribe();
     finishRefresh();

@@ -54,18 +54,20 @@ describe('authenticationInterceptor', () => {
     session.state.mockReturnValue('unassigned');
     session.blocked.mockReturnValue(true);
     const next = vi.fn((_request: HttpRequest<unknown>) => of(new HttpResponse({ status: 200 })));
-    for (const [method, path] of [['GET', '/admission-requests/me'], ['POST', '/admission-requests']]) {
+    for (const [method, path] of [['GET', '/admission-requests/me'], ['POST', '/admission-requests'],
+      ['GET', '/squad-creation-requests/me'], ['POST', '/squad-creation-requests']]) {
       TestBed.runInInjectionContext(() => authenticationInterceptor(new HttpRequest(method, `${API_URL}${path}`, null), next)).subscribe();
     }
-    expect(next).toHaveBeenCalledTimes(2);
+    expect(next).toHaveBeenCalledTimes(4);
     expect(next.mock.calls[1][0].headers.get('X-XSRF-TOKEN')).toBe('csrf');
+    expect(next.mock.calls[3][0].headers.get('X-XSRF-TOKEN')).toBe('csrf');
     for (const path of ['/incidents', '/administration/members', '/admission-requests/other']) {
       TestBed.runInInjectionContext(() => authenticationInterceptor(new HttpRequest('GET', `${API_URL}${path}`), next)).subscribe({ error: () => undefined });
     }
-    expect(next).toHaveBeenCalledTimes(2);
+    expect(next).toHaveBeenCalledTimes(4);
     session.state.mockReturnValue('disabled');
     TestBed.runInInjectionContext(() => authenticationInterceptor(new HttpRequest('POST', `${API_URL}/admission-requests`, {}), next)).subscribe({ error: () => undefined });
-    expect(next).toHaveBeenCalledTimes(2);
+    expect(next).toHaveBeenCalledTimes(4);
   });
 
   it('locks the preserved draft when the server reports a different session context', () => {
@@ -74,5 +76,25 @@ describe('authenticationInterceptor', () => {
       .subscribe({ error: () => undefined });
     expect(next).toHaveBeenCalledTimes(1);
     expect(session.contextChanged).toHaveBeenCalledOnce();
+  });
+
+  it('allows only global administration requests for unassigned sessions', () => {
+    session.state.mockReturnValue('unassigned');
+    session.blocked.mockReturnValue(true);
+    const next = vi.fn((_request: HttpRequest<unknown>) => of(new HttpResponse({ status: 200 })));
+    for (const [method, path] of [['GET', '/global-administration/status'],
+      ['GET', '/global-administration/squad-creation-requests'],
+      ['POST', '/global-administration/squad-creation-requests/request-id/approve'],
+      ['POST', '/global-administration/squad-creation-requests/request-id/reject']]) {
+      TestBed.runInInjectionContext(() => authenticationInterceptor(new HttpRequest(method, `${API_URL}${path}`, null), next)).subscribe();
+    }
+    expect(next).toHaveBeenCalledTimes(4);
+    expect(next.mock.calls[2][0].headers.get('X-XSRF-TOKEN')).toBe('csrf');
+    for (const path of ['/incidents', '/global-administration/other']) {
+      TestBed.runInInjectionContext(() => authenticationInterceptor(new HttpRequest('GET', `${API_URL}${path}`), next)).subscribe({ error: () => undefined });
+    }
+    session.state.mockReturnValue('disabled');
+    TestBed.runInInjectionContext(() => authenticationInterceptor(new HttpRequest('GET', `${API_URL}/global-administration/status`), next)).subscribe({ error: () => undefined });
+    expect(next).toHaveBeenCalledTimes(4);
   });
 });

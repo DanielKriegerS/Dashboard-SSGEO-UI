@@ -1,8 +1,9 @@
 import { Routes } from '@angular/router';
-import { accessGuard, adminGuard } from './core/auth/access.guard';
+import { accessGuard, adminGuard, globalAdminGuard } from './core/auth/access.guard';
 
 export const routes: Routes = [
   { path: 'access', loadComponent: () => import('./pages/access/access').then(m => m.AccessPage) },
+  { path: 'global-administration', canActivate: [globalAdminGuard], loadComponent: () => import('./pages/administration/global-requests').then(m => m.GlobalRequestsPage) },
   { path: '', canActivateChild: [accessGuard], children: [
   { path: '', pathMatch: 'full', title: 'Home - SSGEO', loadComponent: () => import('./pages/menu/menu').then(m => m.MenuPage) },
   { path: 'planning', title: 'Planejamento - SSGEO', data: { menu: 'planning' }, loadComponent: () => import('./pages/menu/menu').then(m => m.MenuPage) },
@@ -18,9 +19,10 @@ export const routes: Routes = [
   { path: 'coatends/:id', loadComponent: () => import('../app/pages/coatend/coatend').then(m => m.CoatendComponent) },
   { path: 'developers', redirectTo: 'admin/developers', pathMatch: 'full' },
   {
-    path: 'admin', loadComponent: () => import('./pages/administration/administration').then(m => m.Administration),
+    path: 'admin', canActivate: [adminGuard], canActivateChild: [adminGuard], loadComponent: () => import('./pages/administration/administration').then(m => m.Administration),
     children: [
       { path: 'members', canActivate: [adminGuard], loadComponent: () => import('./pages/administration/members/members').then(m => m.MembersPage) },
+      { path: 'team', title: 'Manutenção Equipe - SSGEO', data: { section: 'team' }, canActivate: [adminGuard], loadComponent: () => import('./pages/administration/members/members').then(m => m.MembersPage) },
       { path: '', pathMatch: 'full', title: 'Administração - SSGEO', data: { menu: 'admin' }, loadComponent: () => import('./pages/menu/menu').then(m => m.MenuPage) },
       { path: 'developers', loadComponent: () => import('./pages/developers/developers').then(m => m.Developers) },
       { path: 'features', loadComponent: () => import('./pages/features/features').then(m => m.Features) },

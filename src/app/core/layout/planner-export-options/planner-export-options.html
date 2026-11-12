@@ -42,21 +42,28 @@
 
         <label *ngIf="mode === 'QUARTER'" class="planner-form-field">
           <span>Quarter</span>
-          <select class="form-select" name="quarterId" [(ngModel)]="quarterId" required>
+          <select class="form-select" name="quarterId" [(ngModel)]="quarterId" [disabled]="periodsLoading || !!periodsError || !quarters.length" required>
             <option value="" disabled>Selecione um Quarter</option>
-            <option *ngFor="let quarter of quarters" [value]="quarter.id">{{ quarter.description }}</option>
+            <option *ngFor="let quarter of quarters" [value]="quarter.id">{{ quarterLabel(quarter) }}</option>
           </select>
         </label>
         <label *ngIf="mode === 'SPRINT'" class="planner-form-field">
           <span>Sprint</span>
-          <select class="form-select" name="sprintId" [(ngModel)]="sprintId" required>
+          <select class="form-select" name="sprintId" [(ngModel)]="sprintId" [disabled]="periodsLoading || !!periodsError || !sprints.length" required>
             <option value="" disabled>Selecione uma Sprint</option>
-            <option *ngFor="let sprint of sprints" [value]="sprint.id">{{ sprint.description }}</option>
+            <option *ngFor="let sprint of sprints" [value]="sprint.id">{{ sprintLabel(sprint) }}</option>
           </select>
         </label>
 
+        <label class="planner-form-field">
+          <span>Nome do arquivo</span>
+          <input type="text" class="form-control" name="fileName" [(ngModel)]="fileName" [placeholder]="suggestedFileName" maxlength="180">
+        </label>
       </fieldset>
       <p *ngIf="validationMessage" class="planner-modal-error" role="status">{{ validationMessage }}</p>
+      @if ((mode === 'QUARTER' || mode === 'SPRINT') && periodsError && !periodsLoading) {
+        <button type="button" class="btn btn-outline-secondary" [disabled]="busy" (click)="retryPeriods.emit()">Tentar novamente</button>
+      }
       <p *ngIf="destinationError" class="planner-modal-error" role="alert">{{ destinationError }}</p>
       <footer class="planner-modal-footer">
         <button type="button" class="btn btn-outline-secondary" [disabled]="busy" (click)="returnToGenerationOptions()">Voltar</button>

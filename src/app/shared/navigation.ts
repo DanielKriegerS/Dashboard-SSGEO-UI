@@ -13,7 +13,9 @@ export const navigationMenus = [
     id: 'admin', label: 'Administração', path: '/admin', icon: 'file-text',
     children: [
       { label: 'Features', path: '/admin/features', icon: 'file-text' },
-      { label: 'Desenvolvedores', path: '/admin/developers', icon: 'file-text' }
+      { label: 'Desenvolvedores', path: '/admin/developers', icon: 'file-text' },
+      { label: 'Pedidos e Membros', path: '/admin/members', icon: 'file-text' },
+      { label: 'Manutenção Equipe', path: '/admin/team', icon: 'file-text' }
     ]
   }
 ] as const;

@@ -16,10 +16,14 @@ export class PlannerExportOptions {
   @Input() quarters: QuarterSummary[] = [];
   @Input() sprints: SprintSummary[] = [];
   @Input() exporting = false;
+  @Input() periodsLoading = false;
+  @Input() periodsError = '';
+  readonly retryPeriods = output<void>();
   readonly backRequested = output<void>();
   @Output() exportRequested = new EventEmitter<{
     request: PlannerExportRequest;
     destination: PlannerExportFileHandle | null;
+    fileName: string;
   }>();
 
   opened = false;
@@ -29,6 +33,7 @@ export class PlannerExportOptions {
   count = 15;
   quarterId = '';
   sprintId = '';
+  fileName = '';
   destination: PlannerExportFileHandle | null = null;
   destinationError = '';
   readonly choosingDestination = signal(false);
@@ -43,6 +48,7 @@ export class PlannerExportOptions {
 
   open(selection: PlannerDisplaySelection, visibleDays: string[]): void {
     this.destination = null;
+    this.fileName = '';
     this.destinationError = '';
     this.mode = selection.type === 'count' ? 'COUNT' : 'PERIOD';
     this.startDate = visibleDays[0] ?? '';
@@ -78,7 +84,52 @@ export class PlannerExportOptions {
     }
   }
 
+  quarterLabel(quarter: QuarterSummary): string {
+    return `${quarter.description} | ${this.yearLabel(quarter.startDate)}`;
+  }
+
+  sprintLabel(sprint: SprintSummary): string {
+    const quarter = this.quarters.find(item => item.id === sprint.quarterId);
+    return `${sprint.description} | ${quarter ? this.quarterLabel(quarter) : `Sem Quarter | ${this.yearLabel(sprint.startDate)}`}`;
+  }
+
+  get suggestedFileName(): string {
+    let context: string;
+    if (this.mode === 'QUARTER') {
+      const quarter = this.quarters.find(item => item.id === this.quarterId);
+      context = quarter ? this.quarterLabel(quarter).replaceAll(' | ', '_') : 'quarter';
+    } else if (this.mode === 'SPRINT') {
+      const sprint = this.sprints.find(item => item.id === this.sprintId);
+      context = sprint ? this.sprintLabel(sprint).replaceAll(' | ', '_') : 'sprint';
+    } else {
+      context = this.mode === 'COUNT' ? `${this.startDate}_${this.count}-dias` : `${this.startDate}_${this.endDate}`;
+    }
+    return `planner_${context}`.replace(/[\u0000-\u001f<>:"/\\|?*]/g, '_').slice(0, 170) + '.xlsx';
+  }
+
+  get resolvedFileName(): string {
+    const name = this.fileName.trim() || this.suggestedFileName;
+    return name.replace(/\.xlsx$/i, '') + '.xlsx';
+  }
+
+  private yearLabel(startDate?: string): string {
+    const date = startDate?.slice(0, 10) ?? '';
+    return this.isValidDate(date) ? date.slice(0, 4) : 'Ano não informado';
+  }
+
   get validationMessage(): string {
+    const name = this.resolvedFileName;
+    const stem = name.slice(0, -5);
+    if (!stem || stem.endsWith('.') || /[\u0000-\u001f<>:"/\\|?*]/.test(name)
+      || /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(stem) || name.length > 180) {
+      return 'Informe um nome de arquivo válido, sem caracteres reservados e com até 180 caracteres.';
+    }
+    if (this.mode === 'QUARTER' || this.mode === 'SPRINT') {
+      if (this.periodsLoading) return 'Consultando Quarters e Sprints...';
+      if (this.periodsError) return this.periodsError;
+      if (this.mode === 'QUARTER' && !this.quarters.length) return 'Nenhum Quarter cadastrado.';
+      if (this.mode === 'SPRINT' && !this.sprints.length) return 'Nenhuma Sprint cadastrada.';
+    }
     if (this.mode === 'QUARTER') {
       return this.quarters.some(quarter => quarter.id === this.quarterId)
         ? '' : 'Selecione um Quarter para exportar.';
@@ -115,7 +166,7 @@ export class PlannerExportOptions {
         }) => Promise<PlannerExportFileHandle>;
       }).showSaveFilePicker;
       this.destination = await picker.call(window, {
-        suggestedName: 'planner.xlsx',
+        suggestedName: this.resolvedFileName,
         types: [{
           description: 'Planilha Excel',
           accept: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'] }
@@ -164,7 +215,7 @@ export class PlannerExportOptions {
   }
 
   private emitExport(request: PlannerExportRequest): void {
-    this.exportRequested.emit({ request, destination: this.destination });
+    this.exportRequested.emit({ request, destination: this.destination, fileName: this.resolvedFileName });
   }
 
   private isValidDate(value: string): boolean {

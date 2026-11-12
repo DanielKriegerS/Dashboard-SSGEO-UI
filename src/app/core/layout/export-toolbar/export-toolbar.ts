@@ -23,6 +23,10 @@ import { FeedbackService } from '../../../services/feedback';
 import { PlannerExportService } from '../../../services/planner-export';
 import { PlannerExportFileHandle, PlannerExportOptions } from '../planner-export-options/planner-export-options';
 import { PlannerExportContextService } from '../../../shared/services/planner-export-context';
+import { Quarter } from '../../../services/quarter';
+import { SprintService } from '../../../services/sprint';
+import { QuarterSummary } from '../../../models/quarter/QuarterSummary';
+import { SprintSummary } from '../../../models/sprint/SprintSummary';
 
 @Component({
   selector: 'app-export-toolbar',
@@ -47,6 +51,10 @@ export class ExportToolbar {
     inject(PlannerExportContextService);
 
   exporting = false;
+  readonly quarters = signal<QuarterSummary[]>([]);
+  readonly sprints = signal<SprintSummary[]>([]);
+  readonly periodsLoading = signal(false);
+  readonly periodsError = signal('');
   readonly activeDialog = signal<'choose' | 'swap' | null>(null);
   readonly swapDates = signal<SwapDateOption[]>([]);
   readonly swapLoading = signal(false);
@@ -97,6 +105,9 @@ export class ExportToolbar {
   private readonly swapDocumentService = inject(SwapDocumentService);
   private swapRequest?: Subscription;
   private readonly plannerExportService = inject(PlannerExportService);
+  private readonly quarterService = inject(Quarter);
+  private readonly sprintService = inject(SprintService);
+  private periodsRequest?: Subscription;
   private readonly feedback = inject(FeedbackService);
   private readonly cdr = inject(ChangeDetectorRef);
 
@@ -212,9 +223,31 @@ export class ExportToolbar {
       displaySelection,
       visibleDays
     );
+    this.loadExportPeriods();
   }
 
-  exportPlanner(selection: { request: PlannerExportRequest; destination: PlannerExportFileHandle | null }): void {
+  loadExportPeriods(): void {
+    if (!this.exportOptions?.opened || this.exporting) return;
+    this.periodsRequest?.unsubscribe();
+    this.quarters.set([]);
+    this.sprints.set([]);
+    this.exportOptions.quarterId = '';
+    this.exportOptions.sprintId = '';
+    this.periodsError.set('');
+    this.periodsLoading.set(true);
+    this.periodsRequest = forkJoin({ quarters: this.quarterService.getAll(), sprints: this.sprintService.getAll() }).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      finalize(() => this.periodsLoading.set(false))
+    ).subscribe({
+      next: result => {
+        this.quarters.set(result.quarters);
+        this.sprints.set(result.sprints);
+      },
+      error: () => this.periodsError.set('Não foi possível consultar os Quarters e Sprints. Tente novamente.')
+    });
+  }
+
+  exportPlanner(selection: { request: PlannerExportRequest; destination: PlannerExportFileHandle | null; fileName?: string }): void {
     if (this.exporting) {
       return;
     }
@@ -222,8 +255,9 @@ export class ExportToolbar {
     this.exporting = true;
     this.cdr.markForCheck();
 
+    const fileName = selection.fileName ?? this.exportOptions?.resolvedFileName ?? 'planner-export.xlsx';
     this.plannerExportService.export(selection.request).pipe(
-      switchMap(blob => from(this.savePlannerFile(blob, selection.destination))),
+      switchMap(blob => from(this.savePlannerFile(blob, selection.destination, fileName))),
       finalize(() => {
         this.exporting = false;
         this.cdr.markForCheck();
@@ -372,7 +406,7 @@ export class ExportToolbar {
     }) : Promise.resolve(null);
   }
 
-  private async savePlannerFile(blob: Blob, destination: PlannerExportFileHandle | null, fileName = 'planner.xlsx'): Promise<void> {
+  private async savePlannerFile(blob: Blob, destination: PlannerExportFileHandle | null, fileName: string): Promise<void> {
     if (destination) {
       const writable = await destination.createWritable();
       try {

@@ -14,12 +14,27 @@ export interface SquadMember {
   operationalGroup: OperationalGroup; active: boolean; accountActive: boolean;
 }
 export interface MemberChange { role?: MembershipRole; operationalGroup?: OperationalGroup; active?: boolean; }
+export interface SquadCreationRequest {
+  id: string; userId: string; requesterName: string; requesterEmail: string; name: string; admissionCode: string;
+  operationalGroup: OperationalGroup; status: 'PENDING' | 'APPROVED' | 'REJECTED'; requestedAt: string; squadId: string | null;
+}
+export interface SquadCreationInput { name: string; admissionCode: string; operationalGroup: OperationalGroup; }
 
 @Injectable({ providedIn: 'root' })
 export class MembershipAccessService {
   private readonly http = inject(HttpClient);
   squad() { return this.http.get<SquadAccess>(`${API_URL}/administration/squad`); }
+  changeSquad(body: { name: string; admissionCode: string }) {
+    return this.http.patch<SquadAccess>(`${API_URL}/administration/squad`, body);
+  }
   ownRequest() { return this.http.get<AdmissionRequest | null>(`${API_URL}/admission-requests/me`); }
+  ownCreationRequest() { return this.http.get<SquadCreationRequest | null>(`${API_URL}/squad-creation-requests/me`); }
+  requestCreation(body: SquadCreationInput) { return this.http.post<SquadCreationRequest>(`${API_URL}/squad-creation-requests`, body); }
+  globalStatus() { return this.http.get<{ globalAdmin: boolean }>(`${API_URL}/global-administration/status`); }
+  globalRequests() { return this.http.get<SquadCreationRequest[]>(`${API_URL}/global-administration/squad-creation-requests`); }
+  decideCreation(id: string, approve: boolean) {
+    return this.http.post<SquadCreationRequest>(`${API_URL}/global-administration/squad-creation-requests/${encodeURIComponent(id)}/${approve ? 'approve' : 'reject'}`, null);
+  }
   request(code: string) { return this.http.post<AdmissionRequest>(`${API_URL}/admission-requests`, { code }); }
   pending() { return this.http.get<AdmissionRequest[]>(`${API_URL}/administration/admission-requests`); }
   members() { return this.http.get<SquadMember[]>(`${API_URL}/administration/members`); }

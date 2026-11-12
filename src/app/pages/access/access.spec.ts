@@ -7,9 +7,9 @@ import { AccessPage } from './access';
 
 describe('AccessPage', () => {
   const pending: AdmissionRequest = { id: 'request', userId: 'user', squadId: 'squad', name: 'Pessoa', status: 'PENDING', requestedAt: '2026-11-10T10:00:00Z', decidedAt: null };
-  let service: { ownRequest: ReturnType<typeof vi.fn>; request: ReturnType<typeof vi.fn> };
+  let service: { ownRequest: ReturnType<typeof vi.fn>; request: ReturnType<typeof vi.fn>; ownCreationRequest: ReturnType<typeof vi.fn>; requestCreation: ReturnType<typeof vi.fn> };
   beforeEach(() => {
-    service = { ownRequest: vi.fn(() => of(null)), request: vi.fn(() => of(pending)) };
+    service = { ownRequest: vi.fn(() => of(null)), request: vi.fn(() => of(pending)), ownCreationRequest: vi.fn(() => of(null)), requestCreation: vi.fn(() => of({ status: 'PENDING' })) };
     TestBed.configureTestingModule({ imports: [AccessPage], providers: [
       { provide: MembershipAccessService, useValue: service },
       { provide: AuthenticationService, useValue: { state: () => 'unassigned' } }
@@ -23,7 +23,7 @@ describe('AccessPage', () => {
     expect(service.request).toHaveBeenCalledWith('opaque-code');
     expect(fixture.componentInstance.form.controls.code.value).toBe('');
     expect(fixture.nativeElement.textContent).toContain('Pedido pendente');
-    expect(fixture.nativeElement.querySelector('form')).toBeNull();
+    expect(fixture.nativeElement.querySelector('#admission-code')).toBeNull();
     fixture.componentInstance.submit();
     expect(service.request).toHaveBeenCalledOnce();
   });
@@ -42,7 +42,13 @@ describe('AccessPage', () => {
     const fixture = TestBed.createComponent(AccessPage);
     await fixture.whenStable();
     expect(fixture.nativeElement.textContent).toContain('Pedido rejeitado');
-    expect(fixture.nativeElement.querySelector('select')).toBeNull();
-    expect(fixture.nativeElement.querySelector('form')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('#admission-code')).not.toBeNull();
+  });
+  it('submits a creation request without granting access', () => {
+    const fixture = TestBed.createComponent(AccessPage);
+    fixture.componentInstance.creationForm.setValue({ name: 'Equipe Nova', admissionCode: 'NOVA', operationalGroup: 'SWAP' });
+    fixture.componentInstance.submitCreation();
+    expect(service.requestCreation).toHaveBeenCalledExactlyOnceWith({ name: 'Equipe Nova', admissionCode: 'NOVA', operationalGroup: 'SWAP' });
+    expect(fixture.componentInstance.creation()?.status).toBe('PENDING');
   });
 });

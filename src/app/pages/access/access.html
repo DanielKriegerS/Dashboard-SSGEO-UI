@@ -1,5 +1,5 @@
 <section class="access-page" aria-labelledby="admission-title">
-  <h2 id="admission-title" class="h5">Acesso ao Squad</h2>
+  <h2 id="admission-title" class="h5">Acesso a equipes</h2>
   @if (error()) { <p class="alert alert-danger" role="alert">{{ error() }}</p> }
   @if (busy()) { <p role="status">Consultando pedido...</p> }
   @switch (request()?.status) {
@@ -8,11 +8,33 @@
     @case ('REJECTED') { <p role="status">Pedido rejeitado.</p> }
   }
   @if (auth.state() === 'unassigned' && request()?.status !== 'PENDING' && request()?.status !== 'APPROVED') {
+    <h3 class="h6">Solicitar acesso a uma equipe</h3>
     <form [formGroup]="form" (ngSubmit)="submit()">
       <label class="form-label" for="admission-code">Codigo de admissao</label>
-      <input id="admission-code" type="password" class="form-control" formControlName="code" autocomplete="off" required>
+      <input id="admission-code" type="text" class="form-control" formControlName="code" autocomplete="off" required>
       <button type="submit" class="btn btn-primary mt-3" [disabled]="busy() || form.invalid">Solicitar acesso</button>
     </form>
+  }
+  @if (auth.state() === 'unassigned') {
+    <h3 class="h6 mt-4">Solicitar nova equipe</h3>
+    @switch (creation()?.status) {
+      @case ('PENDING') { <p role="status">Criacao de equipe pendente de aprovacao.</p> }
+      @case ('APPROVED') { <p role="status">Equipe aprovada. Atualize sua sessao para acessa-la.</p> }
+      @case ('REJECTED') { <p role="status">Solicitacao de criacao rejeitada.</p> }
+    }
+    @if (creation()?.status !== 'PENDING' && creation()?.status !== 'APPROVED') {
+      <form [formGroup]="creationForm" (ngSubmit)="submitCreation()">
+        <label class="form-label" for="new-squad-name">Nome da equipe</label>
+        <input id="new-squad-name" class="form-control" formControlName="name" maxlength="255" required>
+        <label class="form-label mt-2" for="new-squad-code">Codigo da equipe</label>
+        <input id="new-squad-code" class="form-control" formControlName="admissionCode" maxlength="255" required>
+        <label class="form-label mt-2" for="new-squad-group">Seu subgrupo</label>
+        <select id="new-squad-group" class="form-select" formControlName="operationalGroup">
+          <option value="ADMINISTRATIVO">Administrativo</option><option value="DESENVOLVEDORES">Desenvolvedores</option><option value="SWAP">SWAP</option>
+        </select>
+        <button type="submit" class="btn btn-primary mt-3" [disabled]="busy() || creationForm.invalid">Solicitar criacao</button>
+      </form>
+    }
   }
   @if (auth.state() === 'active') {
     <a class="btn btn-primary" routerLink="/">Abrir planejamento</a>

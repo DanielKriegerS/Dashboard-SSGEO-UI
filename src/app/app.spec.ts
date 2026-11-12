@@ -5,10 +5,13 @@ import { provideRouter, Router } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { ConnectionState } from './services/connection-state';
 import { AuthenticationService, CurrentUser, SessionState } from './services/authentication';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
+import { MembershipAccessService } from './services/membership-access';
 
 @Component({ template: '<input aria-label="Rascunho">' })
 class DraftPage {}
+@Component({ template: '<h1>Solicitações globais</h1>' })
+class GlobalAreaPage {}
 
 describe('App', () => {
   const createSession = () => {
@@ -18,12 +21,18 @@ describe('App', () => {
       openLogin: vi.fn(), logout: vi.fn(() => of(undefined)) };
   };
   let session: ReturnType<typeof createSession>;
+  let membership: { globalStatus: ReturnType<typeof vi.fn>; globalRequests: ReturnType<typeof vi.fn>;
+    ownRequest: ReturnType<typeof vi.fn>; ownCreationRequest: ReturnType<typeof vi.fn> };
   beforeEach(async () => {
     session = createSession();
+    membership = { globalStatus: vi.fn(() => of({ globalAdmin: false })), globalRequests: vi.fn(() => of([])),
+      ownRequest: vi.fn(() => of(null)), ownCreationRequest: vi.fn(() => of(null)) };
     await TestBed.configureTestingModule({
       imports: [App],
-      providers: [provideRouter([{ path: 'draft', component: DraftPage }]), provideHttpClient(),
-        { provide: AuthenticationService, useValue: session }],
+      providers: [provideRouter([{ path: '', pathMatch: 'full', component: DraftPage },
+        { path: 'draft', component: DraftPage }, { path: 'global-administration', component: GlobalAreaPage }]), provideHttpClient(),
+        { provide: AuthenticationService, useValue: session },
+        { provide: MembershipAccessService, useValue: membership }],
     }).compileComponents();
   });
 
@@ -83,5 +92,46 @@ describe('App', () => {
     expect(compiled.querySelector<HTMLElement>('.workspace')?.hidden).toBe(false);
     expect(compiled.querySelector('input')).toBe(input);
     expect(input.value).toBe('Rascunho antes da expiração');
+  });
+
+  it('opens only global administration for an authorized user without a team', async () => {
+    session.state.set('unassigned'); session.workspaceOpened.set(false);
+    session.user.set({ userId: 'global', name: 'Global', accessState: 'NO_MEMBERSHIP' });
+    membership.globalStatus.mockReturnValue(of({ globalAdmin: true }));
+    const fixture = TestBed.createComponent(App);
+    await fixture.whenStable();
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(TestBed.inject(Router).url).toBe('/global-administration');
+    expect(compiled.textContent).toContain('Solicitações globais');
+    expect(compiled.querySelector('app-access')).toBeNull();
+    expect(compiled.querySelector('router-outlet')).not.toBeNull();
+    expect(compiled.querySelector<HTMLElement>('app-sidebar')?.hidden).toBe(false);
+    expect(compiled.querySelector('a[href="/global-administration"]')).not.toBeNull();
+    session.state.set('disabled');
+    await fixture.whenStable();
+    expect(compiled.querySelector('app-global-requests')).toBeNull();
+  });
+
+  it('retains the admission screen for an unassigned user without global access', async () => {
+    session.state.set('unassigned'); session.workspaceOpened.set(false);
+    const fixture = TestBed.createComponent(App);
+    await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('app-access')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('app-global-requests')).toBeNull();
+    expect(membership.globalRequests).not.toHaveBeenCalled();
+  });
+
+  it('does not mistake a failed global access check for a denied permission', async () => {
+    session.state.set('unassigned'); session.workspaceOpened.set(false);
+    membership.globalStatus.mockReturnValueOnce(throwError(() => new Error('unavailable')))
+      .mockReturnValueOnce(of({ globalAdmin: true }));
+    const fixture = TestBed.createComponent(App);
+    await fixture.whenStable();
+    expect(fixture.nativeElement.textContent).toContain('Não foi possível verificar o acesso global');
+    expect(fixture.nativeElement.querySelector('app-access')).toBeNull();
+    membership.globalStatus.mockReturnValue(of({ globalAdmin: true }));
+    fixture.componentInstance.checkGlobalAccess();
+    await fixture.whenStable();
+    expect(TestBed.inject(Router).url).toBe('/global-administration');
   });
 });

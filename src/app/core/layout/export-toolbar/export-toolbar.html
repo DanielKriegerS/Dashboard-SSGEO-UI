@@ -169,7 +169,12 @@
 </dialog>
 
 <app-planner-export-options
+  [quarters]="quarters()"
+  [sprints]="sprints()"
+  [periodsLoading]="periodsLoading()"
+  [periodsError]="periodsError()"
   [exporting]="exporting"
+  (retryPeriods)="loadExportPeriods()"
   (backRequested)="openGenerationOptions()"
   (exportRequested)="exportPlanner($event)">
 </app-planner-export-options>

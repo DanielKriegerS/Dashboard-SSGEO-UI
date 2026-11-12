@@ -1,5 +1,5 @@
 <header class="members-heading">
-  <h1 class="h4">Membros e pedidos</h1>
+  <h1 class="h4">{{ teamMaintenance ? 'Manutenção Equipe' : 'Pedidos e Membros' }}</h1>
   <button type="button" class="btn btn-outline-secondary" (click)="load()" [disabled]="busy()">Atualizar</button>
 </header>
 @if (auth.user()?.role !== 'ADMIN') {
@@ -8,12 +8,12 @@
   @if (busy()) { <p role="status">Processando...</p> }
   @if (error()) { <p role="alert" class="alert alert-danger">{{ error() }}</p> }
   @if (notice()) { <p role="status" class="alert alert-success">{{ notice() }}</p> }
+  @if (teamMaintenance) {
   @if (squad(); as currentSquad) {
     @if (!auth.blocked() && currentSquad.id === auth.user()?.squadId) {
       <section class="members-section" aria-labelledby="squad-title">
-        <h2 id="squad-title" class="h5">Equipe</h2>
-        <p>{{ currentSquad.name }}</p>
-        <p id="squad-code-label">Codigo da equipe</p>
+        <h2 id="squad-title" class="h5">Equipe:  <span> {{ currentSquad.name }} </span></h2>
+        <h5 id="squad-code-label">Codigo da equipe:</h5>
         <div class="squad-code-line">
           <code aria-labelledby="squad-code-label">{{ currentSquad.admissionCode }}</code>
           <button type="button" class="btn btn-outline-secondary copy-code-button" (click)="copySquadCode()"
@@ -21,8 +21,24 @@
             <span class="copy-code-icon" aria-hidden="true"></span>
           </button>
         </div>
+        @if (editingSquad()) {
+          <form [formGroup]="squadForm" (ngSubmit)="prepareSquad()" class="member-form">
+            <label for="squad-name">Nome da equipe</label>
+            <input id="squad-name" class="form-control" formControlName="name" maxlength="255" required>
+            <label for="squad-code">Codigo da equipe</label>
+            <input id="squad-code" class="form-control" formControlName="admissionCode" maxlength="255" required>
+            <p>Ao alterar o codigo, o codigo anterior deixa de localizar esta equipe.</p>
+            <div class="actions">
+              <button type="submit" class="btn btn-primary" [disabled]="busy() || squadForm.invalid">Revisar alteracao</button>
+              <button type="button" class="btn btn-outline-secondary" (click)="editingSquad.set(false); decision.set(null)" [disabled]="busy()">Cancelar edicao</button>
+            </div>
+          </form>
+        } @else {
+          <button type="button" class="btn btn-outline-secondary" (click)="startSquadEdit(currentSquad)" [disabled]="busy() || !!decision()">Editar equipe</button>
+        }
       </section>
     }
+  }
   }
   @if (decision(); as current) {
     <section class="confirmation" aria-labelledby="decision-title">
@@ -32,6 +48,7 @@
         @case ('reject') { <p>Rejeitar o pedido de {{ current.request.name }}?</p> }
         @case ('style') { <p>{{ activityLabels[current.activity] }}: alterar cor para {{ current.color }}?</p> }
         @case ('member') { <p>{{ current.member.name }}: {{ current.change.role }}, {{ current.change.operationalGroup }}, vinculo {{ current.change.active ? 'ativo' : 'inativo' }}.</p> }
+        @case ('squad') { <p>Equipe: {{ current.change.name }}. Codigo: {{ current.change.admissionCode }}.</p> }
       }
       <div class="actions">
         <button type="button" class="btn btn-primary" (click)="apply()" [disabled]="busy()">Confirmar</button>
@@ -39,6 +56,7 @@
       </div>
     </section>
   }
+  @if (!teamMaintenance) {
   <section class="members-section" aria-labelledby="requests-title">
     <h2 id="requests-title" class="h5">Pedidos pendentes ({{ pending().length }})</h2>
     @for (request of pending(); track request.id) {
@@ -76,6 +94,7 @@
       </article>
     } @empty { <p>Nenhum membro encontrado.</p> }
   </section>
+  } @else {
   <section class="members-section" aria-labelledby="colors-title">
     <h2 id="colors-title" class="h5">Cores das atividades coletivas</h2>
     @for (style of styles(); track style.activity) {
@@ -87,4 +106,5 @@
       </div>
     }
   </section>
+  }
 }

@@ -82,10 +82,11 @@ export class AuthenticationService {
   }
 
   contextHeaders(): Record<string, string> {
-    return this.owner?.squadId ? {
-      'X-Expected-User-Id': this.owner.userId,
-      'X-Expected-Squad-Id': this.owner.squadId
-    } : {};
+    if (this.owner?.squadId) {
+      return { 'X-Expected-User-Id': this.owner.userId, 'X-Expected-Squad-Id': this.owner.squadId };
+    }
+    const user = this.user();
+    return this.state() === 'unassigned' && user ? { 'X-Expected-User-Id': user.userId } : {};
   }
 
   expire(): void {

@@ -1,10 +1,26 @@
 <div class="layout-root">
   
   <app-feedback></app-feedback>
-  <app-sidebar [hidden]="auth.blocked()"></app-sidebar>
+  <app-sidebar [hidden]="auth.blocked() && !(auth.state() === 'unassigned' && globalAccess() === 'allowed')"></app-sidebar>
 
   <main class="content">
-    @if (auth.blocked()) {
+    @if (auth.state() === 'unassigned' && globalAccess() === 'allowed') {
+      <header class="session-toolbar" aria-label="Sessão">
+        <span>{{ auth.user()?.name }}</span>
+        <button type="button" class="btn btn-sm btn-outline-secondary" (click)="logout()" [disabled]="auth.busy()">
+          <img src="/icons/log-out.svg" width="16" height="16" alt=""> Sair
+        </button>
+      </header>
+    } @else if (auth.state() === 'unassigned' && globalAccess() !== 'denied') {
+      <section class="session-status" aria-live="polite">
+        @if (globalAccess() === 'error') {
+          <h1>Não foi possível verificar o acesso global</h1>
+          <button type="button" class="btn btn-outline-secondary" (click)="checkGlobalAccess()">Tentar novamente</button>
+        } @else {
+          <h1>Verificando acesso</h1>
+        }
+      </section>
+    } @else if (auth.blocked()) {
       <section class="session-status" role="status" aria-labelledby="session-title">
         <h1 id="session-title">{{ sessionTitle() }}</h1>
         @if (auth.workspaceOpened()) {
@@ -28,7 +44,6 @@
     } @else {
       <header class="session-toolbar" aria-label="Sessão">
         <span>{{ auth.user()?.name }}</span>
-        @if (auth.user()?.role === 'ADMIN') { <a routerLink="/admin/members">Membros e pedidos</a> }
         <button type="button" class="btn btn-sm btn-outline-secondary" (click)="logout()" [disabled]="auth.busy()">
           <img src="/icons/log-out.svg" width="16" height="16" alt=""> Sair
         </button>
@@ -44,8 +59,9 @@
         </button>
       </section>
     }
-    @if (auth.workspaceOpened()) {
-      <div class="workspace" [hidden]="auth.blocked()" [inert]="auth.blocked()">
+    @if (auth.workspaceOpened() || (auth.state() === 'unassigned' && globalAccess() === 'allowed')) {
+      <div class="workspace" [hidden]="auth.blocked() && !(auth.state() === 'unassigned' && globalAccess() === 'allowed')"
+        [inert]="auth.blocked() && !(auth.state() === 'unassigned' && globalAccess() === 'allowed')">
         <router-outlet></router-outlet>
       </div>
     }

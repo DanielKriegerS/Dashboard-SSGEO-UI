@@ -1,15 +1,93 @@
-:host { display: block; max-width: 1100px; margin: auto; }
-.members-heading, .actions, .request-row { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
-.members-heading { justify-content: space-between; }
-.members-section, .confirmation { border-top: 1px solid #ccd4da; padding-top: 1.25rem; margin-top: 1.5rem; }
-.confirmation { border-left: 3px solid #18664c; padding-left: 1rem; }
-.member-row, .request-row { border-bottom: 1px solid #d5dce0; padding: 1rem 0; overflow-wrap: anywhere; }
-.member-row > .btn { margin-top: .75rem; }
-.request-row > div { flex: 1 1 14rem; min-width: 0; }
-.request-row select { width: auto; max-width: 100%; }
-.member-form { display: grid; gap: .5rem; max-width: 36rem; margin-top: 1rem; }
-button { white-space: normal; }
-.squad-code-line { display: flex; align-items: center; gap: .75rem; min-width: 0; }
-.squad-code-line code { min-width: 0; overflow-wrap: anywhere; user-select: all; }
-.copy-code-button { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 2.5rem; width: 2.5rem; height: 2.5rem; padding: 0; }
-.copy-code-icon { display: block; width: 1.125rem; height: 1.125rem; background: currentColor; mask: url('/icons/copy.svg') center / contain no-repeat; }
+:host {
+    display: block; 
+    max-width: 1100px; 
+    margin: auto; 
+}
+
+.members-heading, .actions, .request-row { 
+    display: flex; 
+    flex-wrap: wrap; 
+    align-items: center; 
+    gap: .75rem; 
+}
+
+.members-heading { 
+    justify-content: space-between; 
+}
+
+.members-section, .confirmation { 
+    border-top: 1px solid #ccd4da; 
+    padding-top: 1.25rem; 
+    margin-top: 1.5rem; 
+}
+
+#squad-title span {
+    font-weight: bolder;
+}
+
+.confirmation { 
+    border-left: 3px solid #18664c; 
+    padding-left: 1rem; 
+}
+
+.member-row, .request-row { 
+    border-bottom: 1px solid #d5dce0; 
+    padding: 1rem 0; 
+    overflow-wrap: anywhere; 
+}
+
+.member-row > .btn { 
+    margin-top: .75rem; 
+}
+
+.request-row > div { 
+    flex: 1 1 14rem; 
+    min-width: 0; 
+}
+
+.request-row select { 
+    width: auto; 
+    max-width: 100%; 
+}
+
+.member-form { 
+    display: grid; 
+    gap: .5rem; 
+    max-width: 36rem; 
+    margin-top: 1rem; 
+}
+
+button { 
+    white-space: normal; 
+}
+
+.squad-code-line { 
+    display: flex; 
+    align-items: center; 
+    gap: .75rem; 
+    min-width: 0; 
+}
+
+.squad-code-line code { 
+    min-width: 0; 
+    overflow-wrap: anywhere; 
+    user-select: all; 
+}
+
+.copy-code-button { 
+    display: inline-flex; 
+    align-items: center; 
+    justify-content: center; 
+    flex: 0 0 2.5rem; 
+    width: 2.5rem; 
+    height: 2.5rem; 
+    padding: 0; 
+}
+
+.copy-code-icon { 
+    display: block; 
+    width: 1.125rem; 
+    height: 1.125rem; 
+    background: currentColor; 
+    mask: url('/icons/copy.svg') center / contain no-repeat; 
+}

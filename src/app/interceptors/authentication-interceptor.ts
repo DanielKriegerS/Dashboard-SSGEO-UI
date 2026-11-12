@@ -9,9 +9,16 @@ export const authenticationInterceptor: HttpInterceptorFn = (request, next) => {
   const session = inject(AuthenticationService);
   const admission = session.state() === 'unassigned' && (
     (request.method === 'GET' && request.url === `${API_URL}/admission-requests/me`) ||
-    (request.method === 'POST' && request.url === `${API_URL}/admission-requests`)
+    (request.method === 'POST' && request.url === `${API_URL}/admission-requests`) ||
+    (request.method === 'GET' && request.url === `${API_URL}/squad-creation-requests/me`) ||
+    (request.method === 'POST' && request.url === `${API_URL}/squad-creation-requests`)
   );
-  if (session.blocked() && !admission) {
+  const globalAdministration = session.state() === 'unassigned' && (
+    (request.method === 'GET' && (request.url === `${API_URL}/global-administration/status`
+      || request.url === `${API_URL}/global-administration/squad-creation-requests`)) ||
+    (request.method === 'POST' && new RegExp(`^${API_URL}/global-administration/squad-creation-requests/[a-zA-Z0-9-]+/(approve|reject)$`).test(request.url))
+  );
+  if (session.blocked() && !admission && !globalAdministration) {
     return throwError(() => new HttpErrorResponse({ status: 401, error: { code: 'SESSION_UNAVAILABLE' } }));
   }
   const scoped = request.clone({ setHeaders: session.contextHeaders() });

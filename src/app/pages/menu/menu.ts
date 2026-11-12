@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { navigationMenus } from '../../shared/navigation';
+import { AuthenticationService } from '../../services/authentication';
 
 @Component({
   imports: [RouterLink],
@@ -16,7 +17,7 @@ import { navigationMenus } from '../../shared/navigation';
         }
       </header>
       <nav class="menu-cards" [attr.aria-label]="isHome ? 'Menus disponíveis' : menu?.label">
-        @for (item of items; track item.path) {
+        @for (item of items(); track item.path) {
           <a class="menu-card" [routerLink]="item.path">
             <span class="card-icon" [class.planning-icon]="item.icon === 'file-spreadsheet'" aria-hidden="true"></span>
             <span>{{ item.label }}</span>
@@ -52,8 +53,11 @@ import { navigationMenus } from '../../shared/navigation';
   `
 })
 export class MenuPage {
+  private readonly auth = inject(AuthenticationService);
   private readonly menuId = inject(ActivatedRoute).snapshot.data['menu'] as string | undefined;
   readonly menu = navigationMenus.find(item => item.id === this.menuId);
   readonly isHome = !this.menu;
-  readonly items = this.menu ? this.menu.children : navigationMenus;
+  readonly items = computed(() => this.menu
+    ? this.menu.id === 'admin' && this.auth.user()?.role !== 'ADMIN' ? [] : this.menu.children
+    : navigationMenus.filter(menu => menu.id !== 'admin' || this.auth.user()?.role === 'ADMIN'));
 }

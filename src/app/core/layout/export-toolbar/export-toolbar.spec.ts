@@ -8,6 +8,9 @@ import { CoatendService } from '../../../services/coatend';
 import { SwapDateOption } from '../../../models/coatend/CoatendMilestoneModel';
 import { SwapDocumentService } from '../../../services/swap-document';
 import { IncidentService } from '../../../services/incident';
+import { Quarter } from '../../../services/quarter';
+import { SprintService } from '../../../services/sprint';
+import { QuarterSummary } from '../../../models/quarter/QuarterSummary';
 
 describe('ExportToolbar', () => {
   let component: ExportToolbar;
@@ -18,6 +21,8 @@ describe('ExportToolbar', () => {
       imports: [ExportToolbar],
       providers: [
         { provide: PlannerExportService, useValue: { export: () => of(new Blob(['xlsx'])) } },
+        { provide: Quarter, useValue: { getAll: vi.fn(() => of([{ id: 'q1', description: 'Quarter 1', sprintCount: 1, startDate: '2026-01-01' }])) } },
+        { provide: SprintService, useValue: { getAll: vi.fn(() => of([{ id: 's1', description: 'Sprint 1', coatendsCount: 1, quarterId: 'q1' }])) } },
         { provide: CoatendService, useValue: { getSwapDates: () => of([]) } },
         { provide: IncidentService, useValue: { getSwapDates: () => of([]) } },
         { provide: SwapDocumentService, useValue: { generate: () => of({ fileName: 'swap.docx', documentBase64: 'UEs=', review: 'Revisao' }) } }
@@ -40,6 +45,81 @@ describe('ExportToolbar', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  it.each(['QUARTER', 'SPRINT'] as const)('loads and exports the selected %s through the modal', async mode => {
+    const exportFile = vi.spyOn(TestBed.inject(PlannerExportService), 'export');
+    const save = vi.spyOn(component as unknown as { savePlannerFile: () => Promise<void> }, 'savePlannerFile').mockResolvedValue();
+    component.openExportOptions();
+    await fixture.whenStable();
+    const root = fixture.nativeElement as HTMLElement;
+    const modeSelect = root.querySelector<HTMLSelectElement>('[name="mode"]')!;
+    modeSelect.value = mode;
+    modeSelect.dispatchEvent(new Event('change'));
+    await fixture.whenStable();
+    const field = mode === 'QUARTER' ? 'quarterId' : 'sprintId';
+    const select = root.querySelector<HTMLSelectElement>(`[name="${field}"]`)!;
+    expect(select.options).toHaveLength(2);
+    expect(select.options[1].textContent).toBe(mode === 'QUARTER' ? 'Quarter 1 | 2026' : 'Sprint 1 | Quarter 1 | 2026');
+    select.value = mode === 'QUARTER' ? 'q1' : 's1';
+    select.dispatchEvent(new Event('change'));
+    await fixture.whenStable();
+    const submit = root.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+    expect(submit.disabled).toBe(false);
+    submit.click();
+    await fixture.whenStable();
+    expect(exportFile).toHaveBeenCalledExactlyOnceWith({ mode, [field]: select.value });
+    expect(save).toHaveBeenCalledOnce();
+  });
+
+  it('shows loading and prevents period export until the lists arrive', async () => {
+    const response = new Subject<QuarterSummary[]>();
+    vi.spyOn(TestBed.inject(Quarter), 'getAll').mockReturnValue(response);
+    component.openExportOptions();
+    component.exportOptions!.mode = 'QUARTER';
+    await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('[name="quarterId"]').disabled).toBe(true);
+    expect(fixture.nativeElement.querySelector('button[type="submit"]').disabled).toBe(true);
+    expect(fixture.nativeElement.textContent).toContain('Consultando Quarters e Sprints');
+    response.next([{ id: 'q2', description: 'Quarter 2', sprintCount: 0 }]);
+    response.complete();
+    await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('[name="quarterId"]').disabled).toBe(false);
+    expect(component.exportOptions!.quarters[0].id).toBe('q2');
+  });
+
+  it('offers retry on failure and clears old selections on reopening', async () => {
+    const load = vi.spyOn(TestBed.inject(Quarter), 'getAll').mockReturnValue(throwError(() => new Error('Offline')));
+    component.openExportOptions();
+    component.exportOptions!.mode = 'SPRINT';
+    await fixture.whenStable();
+    expect(fixture.nativeElement.textContent).toContain('Não foi possível consultar');
+    expect(fixture.nativeElement.querySelector('button[type="submit"]').disabled).toBe(true);
+    load.mockReturnValue(of([{ id: 'q2', description: 'Quarter 2', sprintCount: 0 }]));
+    const retry = Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>)
+      .find(button => button.textContent?.trim() === 'Tentar novamente')!;
+    retry.click();
+    await fixture.whenStable();
+    expect(component.periodsError()).toBe('');
+    component.exportOptions!.quarterId = 'q2';
+    component.exportOptions!.close();
+    component.openExportOptions();
+    await fixture.whenStable();
+    expect(component.exportOptions!.quarterId).toBe('');
+    expect(load).toHaveBeenCalledTimes(3);
+  });
+
+  it('shows empty lists without allowing period export but keeps date export available', async () => {
+    vi.spyOn(TestBed.inject(Quarter), 'getAll').mockReturnValue(of([]));
+    vi.spyOn(TestBed.inject(SprintService), 'getAll').mockReturnValue(of([]));
+    component.openExportOptions();
+    await fixture.whenStable();
+    component.exportOptions!.mode = 'QUARTER';
+    expect(component.exportOptions!.validationMessage).toBe('Nenhum Quarter cadastrado.');
+    component.exportOptions!.mode = 'SPRINT';
+    expect(component.exportOptions!.validationMessage).toBe('Nenhuma Sprint cadastrada.');
+    component.exportOptions!.mode = 'PERIOD';
+    expect(component.exportOptions!.validationMessage).toBe('');
   });
 
   it('opens the chooser before either export modal', () => {
@@ -522,15 +602,15 @@ describe('ExportToolbar', () => {
       static override revokeObjectURL = revokeObjectURL;
     });
     const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
-      expect(this.download).toBe('planner.xlsx');
+      expect(this.download).toBe('Entrega novembro.xlsx');
       expect(this.href).toBe('blob:planner-test');
       expect(this.isConnected).toBe(true);
     });
     try {
       const request = { mode: 'QUARTER' as const, quarterId: 'q1' };
       component.openExportOptions();
-      component.exportPlanner({ request, destination: null });
-      component.exportPlanner({ request, destination: null });
+      component.exportPlanner({ request, destination: null, fileName: 'Entrega novembro.xlsx' });
+      component.exportPlanner({ request, destination: null, fileName: 'Entrega novembro.xlsx' });
       expect(component.exporting).toBe(true);
       expect(exportFile).toHaveBeenCalledExactlyOnceWith(request);
       const blob = new Blob(['backend workbook']);
@@ -541,7 +621,7 @@ describe('ExportToolbar', () => {
       expect(createObjectURL).toHaveBeenCalledWith(blob);
       expect(component.exporting).toBe(false);
       expect(component.exportOptions?.opened).toBe(false);
-      expect(fixture.nativeElement.ownerDocument.querySelector('a[download="planner.xlsx"]')).toBeNull();
+      expect(fixture.nativeElement.ownerDocument.querySelector('a[download="Entrega novembro.xlsx"]')).toBeNull();
       await new Promise(resolve => setTimeout(resolve, 5));
       expect(revokeObjectURL).toHaveBeenCalledWith('blob:planner-test');
     } finally {

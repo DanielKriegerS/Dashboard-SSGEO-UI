@@ -3,5 +3,6 @@ export interface SprintSummary {
     description: string,
     coatendsCount: number,
     startDate?: string,
-    endDate?: string
+    endDate?: string,
+    quarterId?: string | null
 }

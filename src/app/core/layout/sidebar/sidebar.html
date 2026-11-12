@@ -4,7 +4,7 @@
   aria-label="Navegação principal"
 >
   <div class="sidebar-header">
-    <span class="brand">Planner - SSGEO</span>
+    <span class="brand">{{ globalOnly() ? 'Administração Global' : 'Planner - SSGEO' }}</span>
 
     <button
       type="button"
@@ -22,6 +22,12 @@
   </div>
 
   <ul class="menu">
+    @if (globalAdmin()) {
+      <li><a routerLink="/global-administration" routerLinkActive="active" ariaCurrentWhenActive="page" [attr.title]="collapsed ? 'Solicitações de equipes' : null">
+        <span class="menu-icon" aria-hidden="true">E</span><span class="menu-label">Solicitações de equipes</span>
+      </a></li>
+    }
+    @if (!globalOnly()) {
     <li>
       <a
         routerLink="/"
@@ -34,7 +40,7 @@
       </a>
     </li>
 
-    @for (group of menus; track group.id) {
+    @for (group of menus(); track group.id) {
       <li class="menu-group" routerLinkActive="group-active">
         <div class="menu-group-heading">
           <a [routerLink]="group.path" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }"
@@ -55,10 +61,13 @@
         </ul>
       </li>
     }
+    }
   </ul>
 
+  @if (!globalOnly()) {
   <app-export-toolbar
     [fullWidth]="true"
     [collapsed]="collapsed">
   </app-export-toolbar>
+  }
 </nav>
